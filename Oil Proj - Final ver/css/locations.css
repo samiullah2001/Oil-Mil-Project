@@ -1,0 +1,62 @@
+/* Locations Page */
+
+.table-container {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+}
+
+th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.group-badge {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 24px;
+  font-weight: 600;
+  font-size: 12px;
+  color: white;
+}
+
+.group-a { background: #ef4444; }
+.group-b { background: #3b82f6; }
+
+.coordinates, .driving-route {
+  font-family: monospace;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.network-status {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.network-good {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.network-bad {
+  background: #fee2e2;
+  color: #dc2626;
+}

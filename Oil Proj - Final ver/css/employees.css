@@ -1,0 +1,66 @@
+/* Employees Page */
+
+.employee-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.employee-card {
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  transition: transform 0.2s ease;
+}
+
+.employee-card:hover {
+  transform: translateY(-4px);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.default-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.salary-badge {
+  background: rgba(255,255,255,0.2);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.employee-info {
+  margin-top: 10px;
+}
+
+.employee-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.employee-position {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.employee-department {
+  font-size: 12px;
+  opacity: 0.8;
+}
