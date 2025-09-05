@@ -3,84 +3,1042 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoGistics - Integrated Dashboard</title>
+    <title>Logistics Management System</title>
+    <meta name="description" content="Comprehensive logistics management system for service orders, equipment, and operations">
+    <meta name="keywords" content="logistics, management, service orders, equipment, operations">
     
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" id="dynamicCSS">
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+    
+    <!-- Main Styles -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background-color: #f5f6fa;
+            color: #333;
+            line-height: 1.6;
+        }
 
+        /* Layout Structure */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .main-wrapper {
+            flex: 1;
+            margin-left: 280px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            padding: 0 24px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #main-content {
+            flex: 1;
+            padding: 0;
+            background: #f5f6fa;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* Sidebar Navigation */
+        .nav-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .nav-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        .nav-item {
+            margin: 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+        }
+
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .nav-text {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-badge {
+            background: #dc3545;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 11px;
+            min-width: 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .nav-badge.warning {
+            background: #ffc107;
+            color: #000;
+        }
+
+        /* Header */
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .notifications-btn {
+            position: relative;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            color: #666;
+        }
+
+        .notifications-btn:hover {
+            background: #f8f9fa;
+        }
+
+        .notification-dot {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 8px;
+            height: 8px;
+            background: #dc3545;
+            border-radius: 50%;
+            display: none;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .user-menu:hover {
+            background: #f8f9fa;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #007bff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 500;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error States */
+        .error-page,
+        .module-not-available {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            text-align: center;
+            padding: 40px;
+            background: white;
+            margin: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .error-icon {
+            font-size: 48px;
+            color: #dc3545;
+            margin-bottom: 16px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .mobile-menu-toggle {
+                display: block !important;
+            }
+
+            .header-title {
+                display: none;
+            }
+        }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #333;
+            padding: 8px;
+        }
+
+        /* Mobile Overlay */
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-overlay.active {
+                display: block;
+            }
+        }
+
+        /* Utility Classes */
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.2s;
+            line-height: 1.4;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Initial loading overlay */
+        .app-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        .app-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .app-loading h2 {
+            margin-top: 20px;
+            color: #333;
+        }
+
+        .app-loading p {
+            color: #666;
+            margin-top: 8px;
+        }
+
+        /* Page Routing Styles */
+        .page-transition {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+
+        .page-transition.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Navigation Breadcrumbs */
+        .breadcrumb-container {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 0 24px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 0;
+            color: #666;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .breadcrumb-link {
+            color: #007bff;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb-link:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: #ccc;
+            margin: 0 4px;
+        }
+
+        .breadcrumb-current {
+            color: #333;
+            font-weight: 500;
+        }
+
+        /* Module Loading Indicators */
+        .module-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .module-status.loading {
+            display: block;
+            background: #007bff;
+        }
+
+        .module-status.success {
+            display: block;
+            background: #28a745;
+        }
+
+        .module-status.error {
+            display: block;
+            background: #dc3545;
+        }
+
+        /* Route-specific styles */
+        body.page-dashboard #main-content {
+            background: #f5f6fa;
+        }
+
+        body.page-equipment #main-content {
+            background: #f8f9fa;
+        }
+
+        body.page-service-orders #main-content {
+            background: #f5f6fa;
+        }
+
+        /* Connection Status Indicator */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            z-index: 1001;
+            transition: background-color 0.3s;
+        }
+
+        .connection-status.offline {
+            background: #dc3545;
+        }
+
+        /* Performance Monitor */
+        .performance-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #666;
+            display: none;
+        }
+
+        .performance-info.show {
+            display: block;
+        }
+
+        /* Print Styles */
+        @media print {
+            .sidebar,
+            .header,
+            .mobile-overlay,
+            .app-loading,
+            .module-status,
+            .connection-status,
+            .performance-info {
+                display: none !important;
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+            }
+
+            #main-content {
+                background: white !important;
+                box-shadow: none !important;
+            }
+        }
+
+        /* High Contrast Mode Support */
+        @media (prefers-contrast: high) {
+            .sidebar {
+                background: #000;
+            }
+
+            .nav-link {
+                border-bottom: 1px solid #333;
+            }
+
+            .btn-primary {
+                background: #0066cc;
+                border: 2px solid #004499;
+            }
+        }
+
+        /* Reduced Motion Support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+
+            .loading-spinner {
+                animation: none;
+                border: 3px solid #007bff;
+                border-radius: 50%;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="logo">LoGistics</div>
-            <div class="nav-item" data-page="dashboard">🏠 Dashboard</div>
-            <div class="nav-item" data-page="main">📋 Main</div>
-            <div class="nav-item sub-item" data-page="service-orders">Service Order</div>
-            <div class="nav-item sub-item" data-page="employees">Employee</div>
-            <div class="nav-item sub-item" data-page="logistics">Logistics</div>
-            <div class="nav-item sub-item" data-page="locations">Locations</div>
-            <div class="nav-item" data-page="operation">⚙️ Operation</div>
-            <!-- <div class="nav-item sub-item" data-page="inventory">Inventory</div>
-            <div class="nav-item sub-item" data-page="delivery">Delivery</div>
-            <div class="nav-item sub-item" data-page="warehouse">Warehouse</div> -->
-            
-            <div class="nav-item sub-item" data-page="processes">Key Processes</div>
-            <div class="nav-item" data-page="reports">📊 Reports</div>
-            <div class="nav-item" onclick="logout()">🔤 Logout</div>
-        </div>
+    <!-- Connection Status Indicator -->
+    <div class="connection-status" id="connectionStatus" title="System Status"></div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="header">
-                <div class="header-title" id="pageTitle">Dashboard</div>
-                <div class="user-profile">
-                    <div class="user-avatar">M</div>
-                    <span>Mustafa</span>
-                </div>
-            </div>
+    <!-- Performance Monitor -->
+    <div class="performance-info" id="performanceInfo"></div>
 
-            <div class="content-area">
-                <!-- Dashboard Overview -->
-                <div id="dashboard-content" class="page-content active">
-                    <div class="dashboard-overview">
-                        <div class="overview-card" onclick="navigateTo('service-orders')">
-                            <div class="card-icon">📋</div>
-                            <div class="card-title">Service Orders</div>
-                            <div class="card-count" id="serviceOrdersCount">0</div>
-                            <div class="card-description">Active service orders</div>
-                        </div>
-                        <div class="overview-card" onclick="navigateTo('employees')">
-                            <div class="card-icon">👥</div>
-                            <div class="card-title">Employees</div>
-                            <div class="card-count" id="employeesCount">0</div>
-                            <div class="card-description">Total employees</div>
-                        </div>
-                        <div class="overview-card" onclick="navigateTo('logistics')">
-                            <div class="card-icon">🚛</div>
-                            <div class="card-title">Logistics</div>
-                            <div class="card-count" id="logisticsCount">0</div>
-                            <div class="card-description">Logistics entries</div>
-                        </div>
-                        <div class="overview-card" onclick="navigateTo('locations')">
-                            <div class="card-icon">📍</div>
-                            <div class="card-title">Locations</div>
-                            <div class="card-count" id="locationsCount">0</div>
-                            <div class="card-description">Registered locations</div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Module Status Indicator -->
+    <div class="module-status" id="moduleStatus">Loading modules...</div>
 
-                <!-- Dynamic Content Area -->
-                <div id="dynamic-content"></div>
+    <!-- Initial Loading Screen -->
+    <div class="app-loading" id="appLoading">
+        <div class="loading-spinner"></div>
+        <h2>Loading Logistics System</h2>
+        <p id="loadingStatus">Initializing modules...</p>
+        <div style="margin-top: 20px; font-size: 12px; color: #999;">
+            <div id="moduleLoadingProgress">
+                <div>📋 Notifications: <span id="notificationsStatus">Loading...</span></div>
+                <div>🛠️ Service Orders: <span id="serviceOrdersStatus">Loading...</span></div>
+                <div>🔧 Equipment: <span id="equipmentStatus">Loading...</span></div>
+                <div>📊 Navigation: <span id="navigationStatus">Loading...</span></div>
             </div>
         </div>
     </div>
 
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
+    <!-- Main Application Container -->
+    <div class="app-container" id="appContainer" style="display: none;">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <!-- Navigation content will be populated by navigation.js -->
+            <div class="nav-header">
+                <div class="logo">
+                    <span class="logo-text">📦 Loading...</span>
+                </div>
+            </div>
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <div class="nav-link">
+                        <i class="nav-icon">⏳</i>
+                        <span class="nav-text">Loading...</span>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Wrapper -->
+        <div class="main-wrapper">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle" title="Toggle Menu">☰</button>
+                    <h1 class="header-title" id="headerTitle">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <button class="notifications-btn" id="notificationsBtn" title="Notifications">
+                        🔔
+                        <span class="notification-dot" id="notificationDot"></span>
+                    </button>
+                    <div class="user-menu" id="userMenu" title="User Menu">
+                        <div class="user-avatar">
+                            <span>M</span>
+                        </div>
+                        <span>Mustafa</span>
+                        <span style="margin-left: 4px;">▼</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Wrapper -->
+            <div class="content-wrapper">
+                <!-- Breadcrumb will be inserted here by navigation.js -->
+                
+                <!-- Main Content Area -->
+                <main id="main-content" class="page-transition">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading content...</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Global configuration
+        window.APP_CONFIG = {
+            version: '1.0.0',
+            environment: 'development',
+            debug: true,
+            features: {
+                serviceOrders: true,
+                equipment: true,
+                notifications: true,
+                reports: false,
+                analytics: false
+            }
+        };
+
+        // Performance monitoring
+        window.PERFORMANCE_START = performance.now();
+        let moduleLoadTimes = {};
+        let navigationTimes = {};
+
+        // Error tracking
+        let errorCount = 0;
+        const MAX_ERRORS = 10;
+
+        // Prevent navigation errors during loading
+        window.addEventListener('error', function(e) {
+            errorCount++;
+            console.error('Script error:', e.error);
+            
+            if (errorCount > MAX_ERRORS) {
+                showCriticalError('Too many errors occurred. Please refresh the page.');
+            }
+            
+            updateConnectionStatus('error');
+        });
+
+        // Initialize app loading state
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded - Starting module initialization');
+            updateLoadingStatus('DOM loaded, initializing modules...');
+        });
+
+        // Connection status management
+        function updateConnectionStatus(status) {
+            const indicator = document.getElementById('connectionStatus');
+            if (indicator) {
+                indicator.className = `connection-status ${status || 'online'}`;
+                indicator.title = status === 'offline' ? 'System Offline' : 
+                                status === 'error' ? 'System Error' : 'System Online';
+            }
+        }
+
+        // Performance monitoring
+        function updatePerformanceInfo() {
+            const perfInfo = document.getElementById('performanceInfo');
+            if (perfInfo && window.APP_CONFIG.debug) {
+                const now = performance.now();
+                const memInfo = performance.memory ? 
+                    `Mem: ${Math.round(performance.memory.usedJSHeapSize / 1024 / 1024)}MB` : '';
+                
+                perfInfo.innerHTML = `Load: ${Math.round(now - window.PERFORMANCE_START)}ms ${memInfo}`;
+                perfInfo.classList.add('show');
+            }
+        }
+
+        // Update loading status
+        function updateLoadingStatus(message) {
+            const statusEl = document.getElementById('loadingStatus');
+            if (statusEl) {
+                statusEl.textContent = message;
+            }
+            console.log('Loading Status:', message);
+        }
+
+        // Update module status
+        function updateModuleStatus(module, status) {
+            const statusEl = document.getElementById(module + 'Status');
+            if (statusEl) {
+                statusEl.textContent = status;
+                statusEl.style.color = status === 'Ready' ? '#28a745' : 
+                                    status === 'Error' ? '#dc3545' : '#007bff';
+            }
+        }
+
+        // Show critical error
+        function showCriticalError(message) {
+            const appContainer = document.getElementById('appContainer');
+            const appLoading = document.getElementById('appLoading');
+            
+            if (appContainer) {
+                appContainer.innerHTML = `
+                    <div class="error-page" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                         display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                         background: white; z-index: 10000;">
+                        <div class="error-icon">💥</div>
+                        <h2>Critical System Error</h2>
+                        <p>${message}</p>
+                        <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 20px;">
+                            Reload Application
+                        </button>
+                    </div>
+                `;
+            }
+            
+            if (appLoading) {
+                appLoading.style.display = 'none';
+            }
+        }
+
+        // Mobile menu functionality
+        function initializeMobileMenu() {
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+
+            if (mobileToggle && sidebar && mobileOverlay) {
+                mobileToggle.addEventListener('click', function() {
+                    sidebar.classList.add('mobile-open');
+                    mobileOverlay.classList.add('active');
+                });
+
+                mobileOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('mobile-open');
+                    mobileOverlay.classList.remove('active');
+                });
+
+                // Close on navigation
+                sidebar.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-link') || e.target.closest('.nav-link')) {
+                        sidebar.classList.remove('mobile-open');
+                        mobileOverlay.classList.remove('active');
+                    }
+                });
+
+                console.log('Mobile menu initialized');
+            }
+        }
+
+        // Show app after modules are loaded
+        function showApp() {
+            const appLoading = document.getElementById('appLoading');
+            const appContainer = document.getElementById('appContainer');
+            const moduleStatus = document.getElementById('moduleStatus');
+            
+            updateLoadingStatus('All modules loaded, starting application...');
+            
+            if (appLoading && appContainer) {
+                setTimeout(() => {
+                    appLoading.classList.add('hidden');
+                    appContainer.style.display = 'flex';
+                    
+                    // Add page transition
+                    const mainContent = document.getElementById('main-content');
+                    if (mainContent) {
+                        mainContent.classList.add('active');
+                    }
+                    
+                    setTimeout(() => {
+                        appLoading.style.display = 'none';
+                        if (moduleStatus) {
+                            moduleStatus.textContent = 'System Ready';
+                            moduleStatus.className = 'module-status success';
+                            setTimeout(() => {
+                                moduleStatus.style.display = 'none';
+                            }, 2000);
+                        }
+                    }, 300);
+
+                    // Update performance info
+                    updatePerformanceInfo();
+                    updateConnectionStatus('online');
+                    
+                    console.log('Application startup complete');
+                }, 500);
+            }
+        }
+
+        // Module loading status tracking
+        let modulesLoaded = {
+            notifications: false,
+            serviceOrders: false,
+            equipmentIntegration: false,
+            serviceOrdersUI: false,
+            equipmentPage: false,
+            navigation: false
+        };
+
+        let moduleStartTimes = {
+            notifications: performance.now(),
+            serviceOrders: performance.now(),
+            equipmentIntegration: performance.now(),
+            serviceOrdersUI: performance.now(),
+            equipmentPage: performance.now(),
+            navigation: performance.now()
+        };
+
+        // Check modules loaded status
+        function checkModulesLoaded() {
+            const loadedModules = Object.keys(modulesLoaded).filter(key => modulesLoaded[key]);
+            const totalModules = Object.keys(modulesLoaded).length;
+            
+            console.log(`Modules loaded: ${loadedModules.length}/${totalModules}`, {
+                loaded: loadedModules,
+                pending: Object.keys(modulesLoaded).filter(key => !modulesLoaded[key])
+            });
+            
+            updateLoadingStatus(`Loading modules... ${loadedModules.length}/${totalModules}`);
+            
+            // Show app when critical modules are loaded (notifications, navigation, equipmentPage)
+            const criticalModules = ['notifications', 'navigation', 'equipmentPage'];
+            const criticalLoaded = criticalModules.every(module => modulesLoaded[module]);
+            
+            if (criticalLoaded) {
+                updateLoadingStatus('Critical modules loaded, initializing application...');
+                showApp();
+                initializeMobileMenu();
+            }
+        }
+
+        // Listen for module ready events
+        window.addEventListener('moduleLoaded', function(e) {
+            const moduleName = e.detail.module;
+            if (modulesLoaded.hasOwnProperty(moduleName)) {
+                modulesLoaded[moduleName] = true;
+                moduleLoadTimes[moduleName] = performance.now() - moduleStartTimes[moduleName];
+                
+                console.log(`Module loaded: ${moduleName} (${Math.round(moduleLoadTimes[moduleName])}ms)`);
+                
+                // Update UI status
+                const moduleDisplayNames = {
+                    notifications: 'notifications',
+                    serviceOrders: 'serviceOrders',
+                    equipmentIntegration: 'equipment',
+                    serviceOrdersUI: 'equipment',
+                    equipmentPage: 'equipment',
+                    navigation: 'navigation'
+                };
+                
+                const displayName = moduleDisplayNames[moduleName];
+                if (displayName) {
+                    updateModuleStatus(displayName, 'Ready');
+                }
+                
+                checkModulesLoaded();
+            }
+        });
+
+        // Fallback - show app after timeout
+        const FALLBACK_TIMEOUT = 5000; // 5 seconds
+        setTimeout(() => {
+            if (document.getElementById('appLoading').style.display !== 'none') {
+                console.warn('Modules taking too long to load, showing app anyway');
+                updateLoadingStatus('Loading timeout - showing application...');
+                
+                // Mark all modules as loaded to prevent infinite loading
+                Object.keys(modulesLoaded).forEach(key => {
+                    if (!modulesLoaded[key]) {
+                        modulesLoaded[key] = true;
+                        updateModuleStatus(key.replace(/([A-Z])/g, '-$1').toLowerCase(), 'Timeout');
+                    }
+                });
+                
+                showApp();
+                initializeMobileMenu();
+            }
+        }, FALLBACK_TIMEOUT);
+
+        // Header and navigation utility functions
+        window.updateHeaderTitle = function(title) {
+            const headerTitle = document.getElementById('headerTitle');
+            if (headerTitle) {
+                headerTitle.textContent = title;
+                document.title = `${title} - Logistics Management`;
+            }
+        };
+
+        window.updateNotificationDot = function(show) {
+            const notificationDot = document.getElementById('notificationDot');
+            if (notificationDot) {
+                notificationDot.style.display = show ? 'block' : 'none';
+            }
+        };
+
+        // Route change tracking
+        window.trackRouteChange = function(from, to) {
+            const changeTime = performance.now();
+            navigationTimes[`${from}_to_${to}`] = changeTime;
+            
+            if (window.APP_CONFIG.debug) {
+                console.log(`Route change: ${from} → ${to} (${Math.round(changeTime)}ms)`);
+            }
+        };
+
+        // Global error handler
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+            errorCount++;
+            
+            if (window.NotificationSystem) {
+                window.NotificationSystem.showError('An unexpected error occurred');
+            }
+            
+            updateConnectionStatus('error');
+            
+            if (errorCount > MAX_ERRORS) {
+                showCriticalError('System has encountered multiple errors. Please refresh the page.');
+            }
+        });
+
+        // Network status monitoring
+        window.addEventListener('online', function() {
+            updateConnectionStatus('online');
+            if (window.NotificationSystem) {
+                window.NotificationSystem.showSuccess('Connection restored');
+            }
+        });
+
+        window.addEventListener('offline', function() {
+            updateConnectionStatus('offline');
+            if (window.NotificationSystem) {
+                window.NotificationSystem.showWarning('You are offline');
+            }
+        });
+        // Initial connection status
+        updateConnectionStatus(navigator.onLine ? 'online' : 'offline');
+    </script>
     <!-- JavaScript Files -->
     <script src="js/app.js"></script>
     <script src="js/navigation.js"></script>
@@ -89,5 +1047,6 @@
     <script src="js/logistics.js"></script>
     <script src="js/locations.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/equipment-page.js"></script>
 </body>
 </html>

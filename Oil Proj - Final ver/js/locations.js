@@ -1,5 +1,13 @@
 // Locations Page
-function loadLocationsPage() {
+function loadLocationsPage(container) {
+    if (!container) {
+        container = document.getElementById("main-content");
+    }
+    if (!container) {
+        console.error("No container found for Locations page");
+        return;
+    }
+
     const content = `
         <div class="controls">
             <button class="create-btn" onclick="Locations.openCreateModal()">
@@ -86,9 +94,9 @@ function loadLocationsPage() {
             </div>
         </div>
     `;
-    
-    document.getElementById('dynamic-content').innerHTML = content;
-    loadPageStyles('locations');
+
+    container.innerHTML = content;
+    // loadPageStyles("locations");
     Locations.init();
 }
 
@@ -96,23 +104,24 @@ function loadLocationsPage() {
 const Locations = {
     init() {
         this.populateTable();
-        const form = document.getElementById('createLocationForm');
+        const form = document.getElementById("createLocationForm");
         if (form) {
-            form.addEventListener('submit', this.handleSubmit.bind(this));
+            form.addEventListener("submit", this.handleSubmit.bind(this));
         }
     },
 
     populateTable(data = AppState.data.locations) {
-        const tbody = document.getElementById('locationsTableBody');
-        tbody.innerHTML = '';
+        const tbody = document.getElementById("locationsTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
 
         data.forEach(location => {
-            const row = document.createElement('tr');
+            const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${location.locationDescription}</td>
                 <td><div class="coordinates">${location.location}</div></td>
-                <td>${location.wellNo || 'NB'}</td>
-                <td>${location.nextLocation || 'NB'}</td>
+                <td>${location.wellNo || "NB"}</td>
+                <td>${location.nextLocation || "NB"}</td>
                 <td><span class="group-badge group-${location.group.toLowerCase()}">${location.group}</span></td>
                 <td><div class="driving-route">${location.drivingRoute}</div></td>
                 <td><span class="network-status network-${location.network.toLowerCase()}">${location.network}</span></td>
@@ -131,12 +140,12 @@ const Locations = {
     },
 
     openCreateModal() {
-        document.getElementById('createLocationModal').style.display = 'block';
+        document.getElementById("createLocationModal").style.display = "block";
     },
 
     closeCreateModal() {
-        document.getElementById('createLocationModal').style.display = 'none';
-        document.getElementById('createLocationForm').reset();
+        document.getElementById("createLocationModal").style.display = "none";
+        document.getElementById("createLocationForm").reset();
     },
 
     // Upload Excel handler
@@ -174,22 +183,22 @@ const Locations = {
 
     handleSubmit(e) {
         e.preventDefault();
-        
+
         const newLocation = {
             id: Date.now(),
-            locationDescription: document.getElementById('loc_description').value,
-            location: document.getElementById('loc_coordinates').value,
-            wellNo: document.getElementById('loc_wellNo').value || 'NB',
-            nextLocation: document.getElementById('loc_nextLocation').value || 'NB',
-            group: document.getElementById('loc_group').value,
-            drivingRoute: document.getElementById('loc_drivingRoute').value,
-            network: document.getElementById('loc_network').value
+            locationDescription: document.getElementById("loc_description").value,
+            location: document.getElementById("loc_coordinates").value,
+            wellNo: document.getElementById("loc_wellNo").value || "NB",
+            nextLocation: document.getElementById("loc_nextLocation").value || "NB",
+            group: document.getElementById("loc_group").value,
+            drivingRoute: document.getElementById("loc_drivingRoute").value,
+            network: document.getElementById("loc_network").value
         };
 
         AppState.data.locations.unshift(newLocation);
         this.populateTable();
         this.closeCreateModal();
         updateDashboardCounts();
-        showNotification('Location created successfully!', 'success');
+        showNotification("Location created successfully!", "success");
     }
 };

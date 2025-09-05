@@ -1,5 +1,13 @@
 // Employees Page
-function loadEmployeesPage() {
+function loadEmployeesPage(container) {
+    if (!container) {
+        container = document.getElementById("main-content");
+    }
+    if (!container) {
+        console.error("No container found for Employees page");
+        return;
+    }
+
     const content = `
         <div class="controls">
             <button class="add-employee-btn" onclick="Employees.openCreateModal()">
@@ -74,40 +82,44 @@ function loadEmployeesPage() {
             </div>
         </div>
     `;
-    
-    document.getElementById('dynamic-content').innerHTML = content;
-    loadPageStyles('employees');
+
+    container.innerHTML = content;
+
     Employees.init();
 }
 
 // Employees Module
 const Employees = {
     gradients: [
-        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-        'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+        "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+        "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+        "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
     ],
 
     init() {
         this.populateGrid();
-        document.getElementById('employeeForm').addEventListener('submit', this.handleSubmit.bind(this));
+        const form = document.getElementById("employeeForm");
+        if (form) {
+            form.addEventListener("submit", this.handleSubmit.bind(this));
+        }
     },
 
     populateGrid(data = AppState.data.employees) {
-        const grid = document.getElementById('employeeGrid');
-        grid.innerHTML = '';
+        const grid = document.getElementById("employeeGrid");
+        if (!grid) return;
+        grid.innerHTML = "";
 
         data.forEach((employee, index) => {
-            const card = document.createElement('div');
-            card.className = 'employee-card';
+            const card = document.createElement("div");
+            card.className = "employee-card";
             card.style.background = this.gradients[index % this.gradients.length];
-            
+
             const fullName = `${employee.firstName} ${employee.lastName}`;
             const avatarInitials = `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`;
-            
+
             card.innerHTML = `
                 <div class="card-header">
                     <div class="default-avatar">${avatarInitials}</div>
@@ -119,72 +131,83 @@ const Employees = {
                     <div class="employee-department">${employee.department}</div>
                 </div>
             `;
-            
+
             grid.appendChild(card);
         });
     },
 
     search(term) {
-        const filtered = AppState.data.employees.filter(employee =>
-            Object.values(employee).some(value =>
-                value && value.toString().toLowerCase().includes(term.toLowerCase())
+        const filtered = AppState.data.employees.filter((employee) =>
+            Object.values(employee).some(
+                (value) =>
+                    value &&
+                    value.toString().toLowerCase().includes(term.toLowerCase())
             )
         );
         this.populateGrid(filtered);
     },
 
     openCreateModal() {
-        document.getElementById('employeeModal').style.display = 'block';
-        const nextId = String(AppState.data.employees.length + 1).padStart(3, '0');
-        document.getElementById('emp_employeeId').value = `EMP${nextId}`;
+        document.getElementById("employeeModal").style.display = "block";
+        const nextId = String(AppState.data.employees.length + 1).padStart(
+            3,
+            "0"
+        );
+        document.getElementById("emp_employeeId").value = `EMP${nextId}`;
     },
 
     closeCreateModal() {
-        document.getElementById('employeeModal').style.display = 'none';
-        document.getElementById('employeeForm').reset();
+        document.getElementById("employeeModal").style.display = "none";
+        document.getElementById("employeeForm").reset();
         this.resetImagePreview();
     },
 
     triggerFileUpload() {
-        document.getElementById('imageInput').click();
+        document.getElementById("imageInput").click();
     },
 
     handleImageUpload(event) {
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('imagePreview').innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            reader.onload = function (e) {
+                document.getElementById(
+                    "imagePreview"
+                ).innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
             };
             reader.readAsDataURL(file);
         }
     },
 
     resetImagePreview() {
-        document.getElementById('imagePreview').innerHTML = '👤';
+        document.getElementById("imagePreview").innerHTML = "👤";
     },
 
     handleSubmit(e) {
         e.preventDefault();
-        
+
         const newEmployee = {
             id: Date.now(),
-            employeeId: document.getElementById('emp_employeeId').value,
-            firstName: document.getElementById('emp_firstName').value,
-            lastName: document.getElementById('emp_lastName').value,
-            position: document.getElementById('emp_position').value,
-            department: document.getElementById('emp_department').value,
-            salary: parseInt(document.getElementById('emp_salary').value),
-            email: `${document.getElementById('emp_firstName').value.toLowerCase()}.${document.getElementById('emp_lastName').value.toLowerCase()}@logistics.com`,
+            employeeId: document.getElementById("emp_employeeId").value,
+            firstName: document.getElementById("emp_firstName").value,
+            lastName: document.getElementById("emp_lastName").value,
+            position: document.getElementById("emp_position").value,
+            department: document.getElementById("emp_department").value,
+            salary: parseInt(document.getElementById("emp_salary").value),
+            email: `${document
+                .getElementById("emp_firstName")
+                .value.toLowerCase()}.${document
+                .getElementById("emp_lastName")
+                .value.toLowerCase()}@logistics.com`,
             phone: "+1234567890",
             employmentStatus: "Active",
-            imageUrl: null
+            imageUrl: null,
         };
 
         AppState.data.employees.unshift(newEmployee);
         this.populateGrid();
         this.closeCreateModal();
         updateDashboardCounts();
-        showNotification('Employee added successfully!', 'success');
-    }
+        showNotification("Employee added successfully!", "success");
+    },
 };

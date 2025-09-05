@@ -1,5 +1,13 @@
 // Logistics Page
-function loadLogisticsPage() {
+function loadLogisticsPage(container) {
+    if (!container) {
+        container = document.getElementById("main-content");
+    }
+    if (!container) {
+        console.error("No container found for Logistics page");
+        return;
+    }
+
     const content = `
         <div class="controls">
             <button class="create-btn" onclick="LogisticsModule.openCreateModal()">
@@ -24,8 +32,7 @@ function loadLogisticsPage() {
                         <th>STATUS</th>
                     </tr>
                 </thead>
-                <tbody id="logisticsTableBody">
-                </tbody>
+                <tbody id="logisticsTableBody"></tbody>
             </table>
         </div>
 
@@ -75,9 +82,8 @@ function loadLogisticsPage() {
             </div>
         </div>
     `;
-    
-    document.getElementById('dynamic-content').innerHTML = content;
-    loadPageStyles('logistics');
+
+    container.innerHTML = content;
     LogisticsModule.init();
 }
 
@@ -85,18 +91,19 @@ function loadLogisticsPage() {
 const LogisticsModule = {
     init() {
         this.populateTable();
-        const form = document.getElementById('createLogisticsForm');
+        const form = document.getElementById("createLogisticsForm");
         if (form) {
-            form.addEventListener('submit', this.handleSubmit.bind(this));
+            form.addEventListener("submit", this.handleSubmit.bind(this));
         }
     },
 
     populateTable(data = AppState.data.logistics) {
-        const tbody = document.getElementById('logisticsTableBody');
-        tbody.innerHTML = '';
+        const tbody = document.getElementById("logisticsTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
 
-        data.forEach(item => {
-            const row = document.createElement('tr');
+        data.forEach((item) => {
+            const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${item.sho}</td>
                 <td>${item.vendorName}</td>
@@ -111,32 +118,37 @@ const LogisticsModule = {
 
     getStatusClass(status) {
         const statusMap = {
-            'completed': 'status-completed',
-            'on process': 'status-on-process',
-            'in transit': 'status-in-transit',
-            'delayed': 'status-delayed'
+            "completed": "status-completed",
+            "on process": "status-on-process",
+            "in transit": "status-in-transit",
+            "delayed": "status-delayed",
         };
-        return statusMap[status.toLowerCase()] || 'status-on-process';
+        return statusMap[status.toLowerCase()] || "status-on-process";
     },
 
     search(term) {
-        const filtered = AppState.data.logistics.filter(item =>
-            Object.values(item).some(value =>
-                value && value.toString().toLowerCase().includes(term.toLowerCase())
+        const filtered = AppState.data.logistics.filter((item) =>
+            Object.values(item).some(
+                (value) =>
+                    value &&
+                    value.toString().toLowerCase().includes(term.toLowerCase())
             )
         );
         this.populateTable(filtered);
     },
 
     openCreateModal() {
-        document.getElementById('createLogisticsModal').style.display = 'block';
-        const nextSHO = String(AppState.data.logistics.length + 1).padStart(5, '0');
-        document.getElementById('log_sho').value = nextSHO;
+        document.getElementById("createLogisticsModal").style.display = "block";
+        const nextSHO = String(AppState.data.logistics.length + 1).padStart(
+            5,
+            "0"
+        );
+        document.getElementById("log_sho").value = nextSHO;
     },
 
     closeCreateModal() {
-        document.getElementById('createLogisticsModal').style.display = 'none';
-        document.getElementById('createLogisticsForm').reset();
+        document.getElementById("createLogisticsModal").style.display = "none";
+        document.getElementById("createLogisticsForm").reset();
     },
 
     // Upload Excel
@@ -151,7 +163,7 @@ const LogisticsModule = {
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(sheet);
 
-            rows.forEach(row => {
+            rows.forEach((row) => {
                 const newLogistics = {
                     id: Date.now() + Math.random(),
                     sho: row.SHO || "",
@@ -159,7 +171,7 @@ const LogisticsModule = {
                     deliverFrom: row["Deliver From"] || "",
                     deliverTo: row["Deliver To"] || "",
                     companyName: row["Company Name"] || "",
-                    status: row.Status || "On Process"
+                    status: row.Status || "On Process",
                 };
                 AppState.data.logistics.push(newLogistics);
             });
@@ -173,21 +185,21 @@ const LogisticsModule = {
 
     handleSubmit(e) {
         e.preventDefault();
-        
+
         const newLogistics = {
             id: Date.now(),
-            sho: document.getElementById('log_sho').value,
-            vendorName: document.getElementById('log_vendorName').value,
-            deliverFrom: document.getElementById('log_deliverFrom').value,
-            deliverTo: document.getElementById('log_deliverTo').value,
-            companyName: document.getElementById('log_companyName').value,
-            status: document.getElementById('log_status').value
+            sho: document.getElementById("log_sho").value,
+            vendorName: document.getElementById("log_vendorName").value,
+            deliverFrom: document.getElementById("log_deliverFrom").value,
+            deliverTo: document.getElementById("log_deliverTo").value,
+            companyName: document.getElementById("log_companyName").value,
+            status: document.getElementById("log_status").value,
         };
 
         AppState.data.logistics.unshift(newLogistics);
         this.populateTable();
         this.closeCreateModal();
         updateDashboardCounts();
-        showNotification('Logistics entry created successfully!', 'success');
-    }
+        showNotification("Logistics entry created successfully!", "success");
+    },
 };

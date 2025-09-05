@@ -1,5 +1,16 @@
 // Service Orders Page
-function loadServiceOrdersPage() {
+function loadServiceOrdersPage(container) {
+    // If no container passed, fallback to #main-content
+    if (!container) {
+        container = document.getElementById("main-content");
+    }
+
+    if (!container) {
+        console.error("No container found for Service Orders page");
+        return;
+    }
+
+    // Full page HTML
     const content = `
         <div class="controls">
             <button class="create-btn" onclick="ServiceOrders.openCreateModal()">
@@ -24,8 +35,7 @@ function loadServiceOrdersPage() {
                         <th>STATUS</th>
                     </tr>
                 </thead>
-                <tbody id="serviceOrdersTableBody">
-                </tbody>
+                <tbody id="serviceOrdersTableBody"></tbody>
             </table>
         </div>
 
@@ -81,9 +91,10 @@ function loadServiceOrdersPage() {
             </div>
         </div>
     `;
-    
-    document.getElementById('dynamic-content').innerHTML = content;
-    loadPageStyles('service-orders');
+
+    container.innerHTML = `<h2>Service Orders</h2>` + content;
+
+    // Initialize module
     ServiceOrders.init();
 }
 
@@ -91,11 +102,16 @@ function loadServiceOrdersPage() {
 const ServiceOrders = {
     init() {
         this.populateTable();
-        document.getElementById('createServiceOrderForm').addEventListener('submit', this.handleSubmit.bind(this));
+        const form = document.getElementById('createServiceOrderForm');
+        if (form) {
+            form.addEventListener('submit', this.handleSubmit.bind(this));
+        }
     },
 
     populateTable(data = AppState.data.serviceOrders) {
         const tbody = document.getElementById('serviceOrdersTableBody');
+        if (!tbody) return;
+
         tbody.innerHTML = '';
 
         data.forEach(order => {
@@ -136,7 +152,6 @@ const ServiceOrders = {
         document.getElementById('createServiceOrderForm').reset();
     },
 
-    // NEW: handle file upload (Excel/CSV)
     handleFileUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -193,7 +208,7 @@ const ServiceOrders = {
 
     handleSubmit(e) {
         e.preventDefault();
-        
+
         const newOrder = {
             id: Date.now(),
             sho: document.getElementById('so_sho').value,
