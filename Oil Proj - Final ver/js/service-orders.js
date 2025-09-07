@@ -1,26 +1,23 @@
 // Service Orders Page
 function loadServiceOrdersPage(container) {
-    // If no container passed, fallback to #main-content
-    if (!container) {
-        container = document.getElementById("main-content");
-    }
-
+    if (!container) container = document.getElementById("main-content");
     if (!container) {
         console.error("No container found for Service Orders page");
         return;
     }
 
-    // Full page HTML
     const content = `
         <div class="controls">
             <button class="create-btn" onclick="ServiceOrders.openCreateModal()">
                 ➕ Create New
             </button>
             <button class="upload-btn" onclick="document.getElementById('serviceOrdersFileInput').click()">
-                📄 Upload Excel/CSV
+                📄 Upload Excel (Details + Orders)
             </button>
-            <input type="file" id="serviceOrdersFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="ServiceOrders.handleFileUpload(event)">
-            <input type="text" class="search-box" placeholder="Search orders..." onkeyup="ServiceOrders.search(this.value)">
+            <input type="file" id="serviceOrdersFileInput" accept=".xlsx,.xls" multiple
+                   style="display:none" onchange="ServiceOrders.handleFileUpload(event)">
+            <input type="text" class="search-box" placeholder="Search orders..." 
+                   onkeyup="ServiceOrders.search(this.value)">
         </div>
 
         <div class="table-container">
@@ -29,9 +26,9 @@ function loadServiceOrdersPage(container) {
                     <tr>
                         <th>SHO</th>
                         <th>VENDOR NAME</th>
-                        <th>ADDRESS</th>
+                        <th>RIG</th>
                         <th>DATE</th>
-                        <th>TYPE</th>
+                        <th>PRIORITY</th>
                         <th>STATUS</th>
                     </tr>
                 </thead>
@@ -48,40 +45,36 @@ function loadServiceOrdersPage(container) {
                 </div>
                 <form id="createServiceOrderForm">
                     <div class="form-group">
-                        <label class="form-label">SHO</label>
-                        <input type="text" class="form-input" id="so_sho" readonly required>
+                        <label class="form-label">Rig Code</label>
+                        <input type="text" class="form-input" id="so_rigCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Well Name</label>
+                        <input type="text" class="form-input" id="so_wellName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Vendor</label>
+                        <input type="text" class="form-input" id="so_vendor" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Vendor Name</label>
                         <input type="text" class="form-input" id="so_vendorName" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Address</label>
-                        <textarea class="form-input" id="so_address" rows="3" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Date</label>
-                        <input type="date" class="form-input" id="so_orderDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Type</label>
-                        <select class="form-select" id="so_orderType" required>
-                            <option value="">Select Type</option>
-                            <option value="Oil & Gas">Oil & Gas</option>
-                            <option value="Manufacturing">Manufacturing</option>
-                            <option value="Transport">Transport</option>
-                            <option value="Warehouse">Warehouse</option>
+                        <label class="form-label">Priority</label>
+                        <select id="so_priority" class="form-select" required>
+                            <option value="Low">Low</option>
+                            <option value="Normal">Normal</option>
+                            <option value="High">High</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" id="so_orderStatus" required>
-                            <option value="">Select Status</option>
-                            <option value="On Process">On Process</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Cancelled">Cancelled</option>
-                        </select>
+                        <label class="form-label">Required Date</label>
+                        <input type="date" class="form-input" id="so_requiredDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Comments</label>
+                        <textarea class="form-input" id="so_comments"></textarea>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="ServiceOrders.closeCreateModal()">Cancel</button>
@@ -93,43 +86,84 @@ function loadServiceOrdersPage(container) {
     `;
 
     container.innerHTML = `<h2>Service Orders</h2>` + content;
-
-    // Initialize module
     ServiceOrders.init();
 }
 
 // Service Orders Module
 const ServiceOrders = {
-    init() {
-        this.populateTable();
-        const form = document.getElementById('createServiceOrderForm');
+    async init() {
+        await this.fetchServiceOrders();
+        const form = document.getElementById("createServiceOrderForm");
         if (form) {
-            form.addEventListener('submit', this.handleSubmit.bind(this));
+            form.addEventListener("submit", this.handleSubmit.bind(this));
         }
     },
 
-    populateTable(data = AppState.data.serviceOrders) {
-        const tbody = document.getElementById('serviceOrdersTableBody');
-        if (!tbody) return;
+    async fetchServiceOrders() {
+        try {
+            const [detailsRes, ordersRes] = await Promise.all([
+                fetch("http://localhost:5000/get_all_service_order_details"),
+                fetch("http://localhost:5000/get_all_service_orders"),
+            ]);
+            if (!detailsRes.ok || !ordersRes.ok) throw new Error("Failed to fetch");
+            const details = await detailsRes.json();
+            const orders = await ordersRes.json();
 
-        tbody.innerHTML = '';
+            // Merge details + orders by SHO
+            AppState.data.serviceOrders = details.map(d => ({
+                ...d,
+                items: orders.filter(o => o.sho === d.sho)
+            }));
 
-        data.forEach(order => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${order.sho}</td>
-                <td>${order.vendorName}</td>
-                <td>${order.address}</td>
-                <td>${order.date}</td>
-                <td>${order.type}</td>
-                <td><span class="status-badge ${this.getStatusClass(order.status)}">${order.status}</span></td>
-            `;
-            tbody.appendChild(row);
+            this.populateTable(AppState.data.serviceOrders);
+        } catch (err) {
+            console.error("Error fetching service orders:", err);
+            AppState.data.serviceOrders = [];
+            this.populateTable([]);
+        }
+    },
+
+    async postServiceOrderDetails(details) {
+        await fetch("http://localhost:5000/post_all_service_order_details", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(details),
         });
     },
 
-    getStatusClass(status) {
-        return status.toLowerCase() === 'completed' ? 'status-completed' : 'status-on-process';
+    async postServiceOrders(orders) {
+        await fetch("http://localhost:5000/post_all_service_orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orders),
+        });
+    },
+
+    async postOneServiceOrder(payload) {
+        await fetch("http://localhost:5000/post_one_service_order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+    },
+
+    populateTable(data) {
+        const tbody = document.getElementById("serviceOrdersTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        data.forEach(order => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${order.sho || ""}</td>
+                <td>${order.vendor_name || ""}</td>
+                <td>${order.rig_code || ""}</td>
+                <td>${order.required_date || ""}</td>
+                <td>${order.priority || ""}</td>
+                <td><span class="status-badge">${order.status || "Pending"}</span></td>
+            `;
+            tbody.appendChild(row);
+        });
     },
 
     search(term) {
@@ -142,91 +176,83 @@ const ServiceOrders = {
     },
 
     openCreateModal() {
-        document.getElementById('createServiceOrderModal').style.display = 'block';
-        const nextSHO = String(AppState.data.serviceOrders.length + 1).padStart(5, '0');
-        document.getElementById('so_sho').value = nextSHO;
+        document.getElementById("createServiceOrderModal").style.display = "block";
     },
 
     closeCreateModal() {
-        document.getElementById('createServiceOrderModal').style.display = 'none';
-        document.getElementById('createServiceOrderForm').reset();
+        document.getElementById("createServiceOrderModal").style.display = "none";
+        document.getElementById("createServiceOrderForm").reset();
     },
 
+    // ✅ Upload two Excel sheets together
     handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-
-        if (file.name.endsWith(".csv")) {
-            reader.onload = (e) => {
-                const text = e.target.result;
-                const rows = text.split("\n").map(r => r.split(","));
-                rows.slice(1).forEach(row => {
-                    if (row.length > 1) {
-                        AppState.data.serviceOrders.push({
-                            id: Date.now(),
-                            sho: row[0],
-                            vendorName: row[1],
-                            address: row[2],
-                            date: row[3],
-                            type: row[4],
-                            status: row[5]
-                        });
-                    }
-                });
-                this.populateTable();
-                showNotification("CSV imported successfully!", "success");
-            };
-            reader.readAsText(file);
-        } else {
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: "array" });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-                rows.slice(1).forEach(row => {
-                    if (row.length > 1) {
-                        AppState.data.serviceOrders.push({
-                            id: Date.now(),
-                            sho: row[0],
-                            vendorName: row[1],
-                            address: row[2],
-                            date: row[3],
-                            type: row[4],
-                            status: row[5]
-                        });
-                    }
-                });
-                this.populateTable();
-                showNotification("Excel imported successfully!", "success");
-            };
-            reader.readAsArrayBuffer(file);
+        const files = event.target.files;
+        if (!files || files.length < 2) {
+            alert("Please upload both Service Order Details and Service Orders sheets");
+            return;
         }
+
+        const promises = Array.from(files).map(file =>
+            new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: "array" });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rows = XLSX.utils.sheet_to_json(sheet);
+                        resolve({ name: file.name, rows });
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            })
+        );
+
+        Promise.all(promises).then(async (results) => {
+            const detailsFile = results.find(f => f.name.toLowerCase().includes("detail"));
+            const ordersFile = results.find(f => f.name.toLowerCase().includes("order"));
+
+            if (!detailsFile || !ordersFile) {
+                alert("Both Details and Orders files must be uploaded");
+                return;
+            }
+
+            await this.postServiceOrderDetails(detailsFile.rows);
+            await this.postServiceOrders(ordersFile.rows);
+            await this.fetchServiceOrders();
+            showNotification("Service Orders imported successfully!", "success");
+        }).catch(err => {
+            console.error("Error processing Excel files:", err);
+            showNotification("Failed to import service orders", "error");
+        });
     },
 
-    handleSubmit(e) {
+    // ✅ Create one service order manually
+    async handleSubmit(e) {
         e.preventDefault();
 
-        const newOrder = {
-            id: Date.now(),
-            sho: document.getElementById('so_sho').value,
-            vendorName: document.getElementById('so_vendorName').value,
-            address: document.getElementById('so_address').value,
-            date: new Date(document.getElementById('so_orderDate').value).toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-            }),
-            type: document.getElementById('so_orderType').value,
-            status: document.getElementById('so_orderStatus').value
+        const payload = {
+            rig_code: document.getElementById("so_rigCode").value,
+            well_name: document.getElementById("so_wellName").value,
+            rig_short_name: document.getElementById("so_rigCode").value.substring(0, 3),
+            required_date: document.getElementById("so_requiredDate").value,
+            required_time: "09:00",
+            priority: document.getElementById("so_priority").value,
+            requestor: "Current User",
+            submission_date: new Date().toISOString().split("T")[0],
+            submission_time: new Date().toLocaleTimeString(),
+            year: new Date().getFullYear(),
+            vendor: document.getElementById("so_vendor").value,
+            vendor_name: document.getElementById("so_vendorName").value,
+            comments: document.getElementById("so_comments").value,
+            details: [] // TODO: add dropdown-based items
         };
 
-        AppState.data.serviceOrders.unshift(newOrder);
-        this.populateTable();
+        await this.postOneServiceOrder(payload);
+        await this.fetchServiceOrders();
         this.closeCreateModal();
-        updateDashboardCounts();
-        showNotification('Service order created successfully!', 'success');
+        showNotification("Service order created successfully!", "success");
     }
 };

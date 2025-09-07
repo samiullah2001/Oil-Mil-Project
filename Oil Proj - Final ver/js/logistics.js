@@ -89,11 +89,24 @@ function loadLogisticsPage(container) {
 
 // Logistics Module
 const LogisticsModule = {
-    init() {
-        this.populateTable();
+    async init() {
+        await this.fetchLogistics(); // ✅ fetch from backend
         const form = document.getElementById("createLogisticsForm");
         if (form) {
             form.addEventListener("submit", this.handleSubmit.bind(this));
+        }
+    },
+
+    async fetchLogistics() {
+        try {
+            const res = await fetch("http://localhost:5000/get_all_logistics");
+            if (!res.ok) throw new Error("Failed to fetch logistics");
+            const data = await res.json();
+            AppState.data.logistics = data;
+            this.populateTable(data);
+        } catch (err) {
+            console.error("Failed to fetch logistics:", err);
+            showNotification("Could not load logistics data", "error");
         }
     },
 
@@ -123,7 +136,7 @@ const LogisticsModule = {
             "in transit": "status-in-transit",
             "delayed": "status-delayed",
         };
-        return statusMap[status.toLowerCase()] || "status-on-process";
+        return statusMap[status?.toLowerCase()] || "status-on-process";
     },
 
     search(term) {
@@ -139,10 +152,7 @@ const LogisticsModule = {
 
     openCreateModal() {
         document.getElementById("createLogisticsModal").style.display = "block";
-        const nextSHO = String(AppState.data.logistics.length + 1).padStart(
-            5,
-            "0"
-        );
+        const nextSHO = String(AppState.data.logistics.length + 1).padStart(5, "0");
         document.getElementById("log_sho").value = nextSHO;
     },
 
@@ -157,37 +167,55 @@ const LogisticsModule = {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(sheet);
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet);
 
-            rows.forEach((row) => {
-                const newLogistics = {
-                    id: Date.now() + Math.random(),
-                    sho: row.SHO || "",
-                    vendorName: row["Vendor Name"] || "",
-                    deliverFrom: row["Deliver From"] || "",
-                    deliverTo: row["Deliver To"] || "",
-                    companyName: row["Company Name"] || "",
-                    status: row.Status || "On Process",
-                };
-                AppState.data.logistics.push(newLogistics);
-            });
+                for (const row of rows) {
+                    const newLogistics = {
+                        sho: row.SHO || "",
+                        vendorName: row["Vendor Name"] || "",
+                        deliverFrom: row["Deliver From"] || "",
+                        deliverTo: row["Deliver To"] || "",
+                        companyName: row["Company Name"] || "",
+                        status: row.Status || "On Process",
+                    };
+                    await this.saveLogisticsToServer(newLogistics);
+                }
 
-            this.populateTable();
-            updateDashboardCounts();
-            showNotification("Excel data imported successfully!", "success");
+                await this.fetchLogistics();
+                updateDashboardCounts();
+                showNotification("Excel data imported successfully!", "success");
+            } catch (err) {
+                console.error("Excel import failed:", err);
+                showNotification("Excel import failed", "error");
+            }
         };
         reader.readAsArrayBuffer(file);
     },
 
-    handleSubmit(e) {
+    async saveLogisticsToServer(newLogistics) {
+        try {
+            const res = await fetch("http://localhost:5000/post_logistics", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newLogistics),
+            });
+            if (!res.ok) throw new Error("Failed to save logistics");
+            return await res.json();
+        } catch (err) {
+            console.error("Error posting logistics:", err);
+            showNotification("Failed to save logistics entry", "error");
+        }
+    },
+
+    async handleSubmit(e) {
         e.preventDefault();
 
         const newLogistics = {
-            id: Date.now(),
             sho: document.getElementById("log_sho").value,
             vendorName: document.getElementById("log_vendorName").value,
             deliverFrom: document.getElementById("log_deliverFrom").value,
@@ -196,10 +224,13 @@ const LogisticsModule = {
             status: document.getElementById("log_status").value,
         };
 
-        AppState.data.logistics.unshift(newLogistics);
-        this.populateTable();
-        this.closeCreateModal();
-        updateDashboardCounts();
-        showNotification("Logistics entry created successfully!", "success");
+        const saved = await this.saveLogisticsToServer(newLogistics);
+        if (saved?.newLogistics) {
+            AppState.data.logistics.unshift(saved.newLogistics);
+            this.populateTable(AppState.data.logistics);
+            this.closeCreateModal();
+            updateDashboardCounts();
+            showNotification("Logistics entry created successfully!", "success");
+        }
     },
 };
