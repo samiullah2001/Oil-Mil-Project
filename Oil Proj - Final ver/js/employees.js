@@ -85,8 +85,42 @@ function loadEmployeesPage(container) {
 
 // Employees Module
 const Employees = {
+    dummyData: [
+        {
+            employeeId: "E001",
+            name: "Ali Khan",
+            position: "Field Engineer",
+            department: "Operations",
+            email: "ali.khan@example.com",
+            phone: "03001234567",
+        },
+        {
+            employeeId: "E002",
+            name: "Sara Ahmed",
+            position: "Logistics Manager",
+            department: "Logistics",
+            email: "sara.ahmed@example.com",
+            phone: "03007654321",
+        },
+        {
+            employeeId: "E003",
+            name: "John Doe",
+            position: "Technician",
+            department: "Maintenance",
+            email: "john.doe@example.com",
+            phone: "03009876543",
+        }
+    ],
+
     async init() {
+        // ✅ show dummy first
+        AppState.data.employees = [...this.dummyData];
+        this.populateTable(AppState.data.employees);
+        updateDashboardCounts();
+
+        // then try backend fetch
         await this.fetchEmployees();
+
         const form = document.getElementById("createEmployeeForm");
         if (form) {
             form.addEventListener("submit", this.handleSubmit.bind(this));
@@ -100,10 +134,11 @@ const Employees = {
             const data = await res.json();
             AppState.data.employees = data;
             this.populateTable(data);
+            updateDashboardCounts();
+            console.log("✅ Employees loaded from backend");
         } catch (err) {
-            console.error("Failed to fetch employees:", err);
-            AppState.data.employees = [];
-            this.populateTable([]);
+            console.warn("⚠️ Using dummy employees data (backend unavailable)");
+            showNotification("Using dummy employees data (backend not reachable)", "warning");
         }
     },
 
@@ -119,6 +154,7 @@ const Employees = {
             return saved;
         } catch (err) {
             console.error("Error posting employee:", err);
+            showNotification("Failed to save employee to server, added locally", "warning");
         }
     },
 
@@ -152,6 +188,8 @@ const Employees = {
 
     openCreateModal() {
         document.getElementById("createEmployeeModal").style.display = "block";
+        const nextId = "E" + String(AppState.data.employees.length + 1).padStart(3, "0");
+        document.getElementById("emp_id").value = nextId;
     },
 
     closeCreateModal() {
@@ -206,9 +244,16 @@ const Employees = {
             phone: document.getElementById("emp_phone").value,
         };
 
-        await this.postEmployee(newEmployee);
-        await this.fetchEmployees();
+        const saved = await this.postEmployee(newEmployee);
+        if (saved?.newEmployee) {
+            AppState.data.employees.unshift(saved.newEmployee);
+        } else {
+            AppState.data.employees.unshift(newEmployee); // fallback local
+        }
+
+        this.populateTable(AppState.data.employees);
         this.closeCreateModal();
+        updateDashboardCounts();
         showNotification("Employee created successfully!", "success");
     }
 };

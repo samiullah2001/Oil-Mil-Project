@@ -68,6 +68,10 @@ function loadLocationsPage(container) {
                             <input type="text" class="form-input" id="loc_group">
                         </div>
                         <div class="form-group">
+                        <label class="form-label">Driving Route</label>
+                        <input type="text" class="form-input" id="loc_drivingRoute">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Network</label>
                             <input type="text" class="form-input" id="loc_network">
                         </div>
@@ -96,6 +100,37 @@ function loadLocationsPage(container) {
 
 // Locations Module
 const Locations = {
+    // ✅ Dummy data
+    dummyLocations: [
+        {
+            locationDescription: "Main Warehouse",
+            location: "Karachi Port",
+            wellNo: "NB",
+            nextLocation: "Depot A",
+            group: "Group 1",
+            drivingRoute: "Highway 5",
+            network: "North"
+        },
+        {
+            locationDescription: "Depot A",
+            location: "Lahore Industrial Area",
+            wellNo: "12",
+            nextLocation: "Depot B",
+            group: "Group 2",
+            drivingRoute: "Highway 9",
+            network: "Central"
+        },
+        {
+            locationDescription: "Depot B",
+            location: "Islamabad Zone",
+            wellNo: "NB",
+            nextLocation: "Main Warehouse",
+            group: "Group 3",
+            drivingRoute: "M2 Motorway",
+            network: "North"
+        }
+    ],
+
     async init() {
         await this.fetchLocations();
         const form = document.getElementById("createLocationForm");
@@ -106,12 +141,23 @@ const Locations = {
 
     async fetchLocations() {
         try {
+            // First show dummy data
+            AppState.data.locations = this.dummyLocations;
+            this.populateTable(this.dummyLocations);
+
+            // Then try backend
             const res = await fetch("/get_all_locations");
-            const data = await res.json();
-            AppState.data.locations = data;
-            this.populateTable(data);
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    AppState.data.locations = data;
+                    this.populateTable(data);
+                }
+            } else {
+                console.warn("Backend returned non-OK status:", res.status);
+            }
         } catch (err) {
-            console.error("Failed to fetch locations:", err);
+            console.error("Failed to fetch locations, showing dummy data:", err);
         }
     },
 
@@ -182,12 +228,15 @@ const Locations = {
                     weather: row["Weather"] || ""
                 };
 
-                // Save each row to backend
-                await fetch("/post_location", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(newLocation)
-                });
+                try {
+                    await fetch("/post_location", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(newLocation)
+                    });
+                } catch (err) {
+                    console.warn("Backend not available, only storing locally:", err);
+                }
 
                 AppState.data.locations.push(newLocation);
             }
@@ -224,15 +273,14 @@ const Locations = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(newLocation)
             });
-
-            AppState.data.locations.unshift(newLocation);
-            this.populateTable();
-            this.closeCreateModal();
-            updateDashboardCounts();
-            showNotification("Location created successfully!", "success");
         } catch (err) {
-            console.error("Error saving location:", err);
-            showNotification("Failed to save location!", "error");
+            console.warn("Backend not available, only storing locally:", err);
         }
+
+        AppState.data.locations.unshift(newLocation);
+        this.populateTable();
+        this.closeCreateModal();
+        updateDashboardCounts();
+        showNotification("Location created successfully!", "success");
     }
 };

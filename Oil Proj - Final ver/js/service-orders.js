@@ -91,8 +91,42 @@ function loadServiceOrdersPage(container) {
 
 // Service Orders Module
 const ServiceOrders = {
+    dummyData: [
+        {
+            sho: "SO1001",
+            vendor_name: "ABC Drilling",
+            rig_code: "RIG-01",
+            required_date: "2025-09-01",
+            priority: "High",
+            status: "Pending",
+        },
+        {
+            sho: "SO1002",
+            vendor_name: "XYZ Oilfield Services",
+            rig_code: "RIG-02",
+            required_date: "2025-09-05",
+            priority: "Normal",
+            status: "In Progress",
+        },
+        {
+            sho: "SO1003",
+            vendor_name: "PetroTech Ltd.",
+            rig_code: "RIG-03",
+            required_date: "2025-09-10",
+            priority: "Low",
+            status: "Completed",
+        },
+    ],
+
     async init() {
+        // ✅ show dummy data first
+        AppState.data.serviceOrders = [...this.dummyData];
+        this.populateTable(AppState.data.serviceOrders);
+        updateDashboardCounts();
+
+        // then try backend
         await this.fetchServiceOrders();
+
         const form = document.getElementById("createServiceOrderForm");
         if (form) {
             form.addEventListener("submit", this.handleSubmit.bind(this));
@@ -116,35 +150,50 @@ const ServiceOrders = {
             }));
 
             this.populateTable(AppState.data.serviceOrders);
+            updateDashboardCounts();
+            console.log("✅ Service orders loaded from backend");
         } catch (err) {
-            console.error("Error fetching service orders:", err);
-            AppState.data.serviceOrders = [];
-            this.populateTable([]);
+            console.warn("⚠️ Using dummy service orders (backend unavailable)");
+            showNotification("Using dummy service orders (backend not reachable)", "warning");
         }
     },
 
     async postServiceOrderDetails(details) {
-        await fetch("http://localhost:5000/post_all_service_order_details", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(details),
-        });
+        try {
+            await fetch("http://localhost:5000/post_all_service_order_details", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(details),
+            });
+        } catch (err) {
+            console.error("Failed to post details:", err);
+        }
     },
 
     async postServiceOrders(orders) {
-        await fetch("http://localhost:5000/post_all_service_orders", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(orders),
-        });
+        try {
+            await fetch("http://localhost:5000/post_all_service_orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(orders),
+            });
+        } catch (err) {
+            console.error("Failed to post orders:", err);
+        }
     },
 
     async postOneServiceOrder(payload) {
-        await fetch("http://localhost:5000/post_one_service_order", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
+        try {
+            const res = await fetch("http://localhost:5000/post_one_service_order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            return await res.json();
+        } catch (err) {
+            console.error("Failed to create order:", err);
+            return null;
+        }
     },
 
     populateTable(data) {
@@ -184,7 +233,7 @@ const ServiceOrders = {
         document.getElementById("createServiceOrderForm").reset();
     },
 
-    // ✅ Upload two Excel sheets together
+    // ✅ Upload Excel (two sheets)
     handleFileUpload(event) {
         const files = event.target.files;
         if (!files || files.length < 2) {
@@ -229,7 +278,7 @@ const ServiceOrders = {
         });
     },
 
-    // ✅ Create one service order manually
+    // ✅ Create one order manually
     async handleSubmit(e) {
         e.preventDefault();
 
@@ -247,12 +296,21 @@ const ServiceOrders = {
             vendor: document.getElementById("so_vendor").value,
             vendor_name: document.getElementById("so_vendorName").value,
             comments: document.getElementById("so_comments").value,
-            details: [] // TODO: add dropdown-based items
+            status: "Pending",
+            details: []
         };
 
-        await this.postOneServiceOrder(payload);
-        await this.fetchServiceOrders();
+        const saved = await this.postOneServiceOrder(payload);
+        if (saved?.newOrder) {
+            AppState.data.serviceOrders.unshift(saved.newOrder);
+        } else {
+            // fallback to local dummy push
+            AppState.data.serviceOrders.unshift(payload);
+        }
+
+        this.populateTable(AppState.data.serviceOrders);
         this.closeCreateModal();
+        updateDashboardCounts();
         showNotification("Service order created successfully!", "success");
     }
 };

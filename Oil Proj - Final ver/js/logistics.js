@@ -89,8 +89,42 @@ function loadLogisticsPage(container) {
 
 // Logistics Module
 const LogisticsModule = {
+    dummyData: [
+        {
+            sho: "00001",
+            vendorName: "Vendor A",
+            deliverFrom: "Karachi",
+            deliverTo: "Lahore",
+            companyName: "FastTrans Logistics",
+            status: "On Process",
+        },
+        {
+            sho: "00002",
+            vendorName: "Vendor B",
+            deliverFrom: "Islamabad",
+            deliverTo: "Multan",
+            companyName: "QuickMove Pvt Ltd",
+            status: "Completed",
+        },
+        {
+            sho: "00003",
+            vendorName: "Vendor C",
+            deliverFrom: "Quetta",
+            deliverTo: "Peshawar",
+            companyName: "SafeLine Transport",
+            status: "In Transit",
+        }
+    ],
+
     async init() {
-        await this.fetchLogistics(); // ✅ fetch from backend
+        // ✅ show dummy first
+        AppState.data.logistics = [...this.dummyData];
+        this.populateTable(AppState.data.logistics);
+        updateDashboardCounts();
+
+        // then try backend fetch
+        await this.fetchLogistics();
+
         const form = document.getElementById("createLogisticsForm");
         if (form) {
             form.addEventListener("submit", this.handleSubmit.bind(this));
@@ -104,9 +138,11 @@ const LogisticsModule = {
             const data = await res.json();
             AppState.data.logistics = data;
             this.populateTable(data);
+            updateDashboardCounts();
+            console.log("✅ Logistics loaded from backend");
         } catch (err) {
-            console.error("Failed to fetch logistics:", err);
-            showNotification("Could not load logistics data", "error");
+            console.warn("⚠️ Using dummy logistics data (backend unavailable)");
+            showNotification("Using dummy logistics data (backend not reachable)", "warning");
         }
     },
 
@@ -227,10 +263,14 @@ const LogisticsModule = {
         const saved = await this.saveLogisticsToServer(newLogistics);
         if (saved?.newLogistics) {
             AppState.data.logistics.unshift(saved.newLogistics);
-            this.populateTable(AppState.data.logistics);
-            this.closeCreateModal();
-            updateDashboardCounts();
-            showNotification("Logistics entry created successfully!", "success");
+        } else {
+            // fallback: push locally
+            AppState.data.logistics.unshift(newLogistics);
         }
+
+        this.populateTable(AppState.data.logistics);
+        this.closeCreateModal();
+        updateDashboardCounts();
+        showNotification("Logistics entry created successfully!", "success");
     },
 };

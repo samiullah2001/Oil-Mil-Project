@@ -64,7 +64,6 @@
 
   // ✅ Keep base.css always loaded, swap page-specific CSS
   function loadPageStyles(page) {
-    // Ensure base.css is always loaded
     if (!document.getElementById("base-style")) {
       const base = document.createElement("link");
       base.rel = "stylesheet";
@@ -73,11 +72,9 @@
       document.head.appendChild(base);
     }
 
-    // Remove old page stylesheet if exists
     const oldPage = document.getElementById("page-style");
     if (oldPage) oldPage.remove();
 
-    // Add current page-specific stylesheet
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = `css/${page}.css`;
@@ -98,7 +95,6 @@
     const mainContent = document.getElementById("main-content");
     if (!mainContent) return;
 
-    // Load page-specific CSS
     loadPageStyles(page);
 
     if (page === "dashboard") {
@@ -138,13 +134,10 @@
           </div>
         </div>
       `;
-      if (typeof updateDashboardCounts === "function") {
-        updateDashboardCounts();
-      }
+      updateDashboardCounts();
       return;
     }
 
-    // Show loading spinner
     mainContent.innerHTML = `
       <div class="loading">
         <div class="loading-spinner"></div>
@@ -152,7 +145,6 @@
       </div>
     `;
 
-    // Call correct page loader
     switch (page) {
       case "service-orders":
         if (typeof loadServiceOrdersPage === "function") {
@@ -176,10 +168,9 @@
         break;
       case "equipment":
         if (window.EquipmentPage) {
-        window.EquipmentPage.loadEquipmentPage();
-        } 
-        else {
-            console.error("EquipmentPage not loaded!");
+          window.EquipmentPage.loadEquipmentPage();
+        } else {
+          console.error("EquipmentPage not loaded!");
         }
         break;
       case "reports":
@@ -194,6 +185,29 @@
       default:
         mainContent.innerHTML = `<p>Page not found: ${page}</p>`;
     }
+  }
+
+  // ✅ New: Update dashboard counts safely
+  function updateDashboardCounts() {
+    window.AppState = window.AppState || { data: {} };
+    window.AppState.data.orders = window.AppState.data.orders || [];
+    window.AppState.data.employees = window.AppState.data.employees || [];
+    window.AppState.data.logistics = window.AppState.data.logistics || [];
+    window.AppState.data.locations = window.AppState.data.locations || [];
+    window.AppState.data.equipment = window.AppState.data.equipment || [];
+
+    const counts = {
+      serviceOrdersCount: window.AppState.data.orders.length,
+      employeesCount: window.AppState.data.employees.length,
+      logisticsCount: window.AppState.data.logistics.length,
+      locationsCount: window.AppState.data.locations.length,
+      equipmentCount: window.AppState.data.equipment.length,
+    };
+
+    Object.entries(counts).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    });
   }
 
   // Highlight active menu item
@@ -212,7 +226,6 @@
     highlightActiveMenu("dashboard");
     navigateTo("dashboard");
 
-    // Signal module loaded
     window.dispatchEvent(
       new CustomEvent("moduleLoaded", { detail: { module: "navigation" } })
     );
@@ -220,4 +233,5 @@
 
   // Expose globally
   window.navigateTo = navigateTo;
+  window.updateDashboardCounts = updateDashboardCounts; // ✅ make available globally
 })();
