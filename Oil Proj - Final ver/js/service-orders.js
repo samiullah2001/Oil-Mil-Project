@@ -24,12 +24,14 @@ function loadServiceOrdersPage(container) {
             <table>
                 <thead>
                     <tr>
-                        <th>SHO</th>
-                        <th>VENDOR NAME</th>
-                        <th>RIG</th>
-                        <th>DATE</th>
-                        <th>PRIORITY</th>
-                        <th>STATUS</th>
+                        <th>Service Order ID</th>
+                        <th>Vendor Name</th>
+                        <th>Rig Code</th>
+                        <th>Well Name</th>
+                        <th>Required Date</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Items Count</th>
                     </tr>
                 </thead>
                 <tbody id="serviceOrdersTableBody"></tbody>
@@ -45,23 +47,23 @@ function loadServiceOrdersPage(container) {
                 </div>
                 <form id="createServiceOrderForm">
                     <div class="form-group">
-                        <label class="form-label">Rig Code</label>
+                        <label>Service Order ID</label>
+                        <input type="text" class="form-input" id="so_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Rig Code</label>
                         <input type="text" class="form-input" id="so_rigCode" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Well Name</label>
+                        <label>Well Name</label>
                         <input type="text" class="form-input" id="so_wellName" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Vendor</label>
-                        <input type="text" class="form-input" id="so_vendor" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Vendor Name</label>
+                        <label>Vendor Name</label>
                         <input type="text" class="form-input" id="so_vendorName" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Priority</label>
+                        <label>Priority</label>
                         <select id="so_priority" class="form-select" required>
                             <option value="Low">Low</option>
                             <option value="Normal">Normal</option>
@@ -69,11 +71,11 @@ function loadServiceOrdersPage(container) {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Required Date</label>
+                        <label>Required Date</label>
                         <input type="date" class="form-input" id="so_requiredDate" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Comments</label>
+                        <label>Comments</label>
                         <textarea class="form-input" id="so_comments"></textarea>
                     </div>
                     <div class="form-actions">
@@ -91,42 +93,8 @@ function loadServiceOrdersPage(container) {
 
 // Service Orders Module
 const ServiceOrders = {
-    dummyData: [
-        {
-            sho: "SO1001",
-            vendor_name: "ABC Drilling",
-            rig_code: "RIG-01",
-            required_date: "2025-09-01",
-            priority: "High",
-            status: "Pending",
-        },
-        {
-            sho: "SO1002",
-            vendor_name: "XYZ Oilfield Services",
-            rig_code: "RIG-02",
-            required_date: "2025-09-05",
-            priority: "Normal",
-            status: "In Progress",
-        },
-        {
-            sho: "SO1003",
-            vendor_name: "PetroTech Ltd.",
-            rig_code: "RIG-03",
-            required_date: "2025-09-10",
-            priority: "Low",
-            status: "Completed",
-        },
-    ],
-
     async init() {
-        // ✅ show dummy data first
-        AppState.data.serviceOrders = [...this.dummyData];
-        this.populateTable(AppState.data.serviceOrders);
-        updateDashboardCounts();
-
-        // then try backend
         await this.fetchServiceOrders();
-
         const form = document.getElementById("createServiceOrderForm");
         if (form) {
             form.addEventListener("submit", this.handleSubmit.bind(this));
@@ -143,57 +111,26 @@ const ServiceOrders = {
             const details = await detailsRes.json();
             const orders = await ordersRes.json();
 
-            // Merge details + orders by SHO
+            // Merge service_order_details with items from service_orders
             AppState.data.serviceOrders = details.map(d => ({
                 ...d,
-                items: orders.filter(o => o.sho === d.sho)
+                items: orders.filter(o => o.service_order_id === d.service_order_id)
             }));
 
             this.populateTable(AppState.data.serviceOrders);
-            updateDashboardCounts();
-            console.log("✅ Service orders loaded from backend");
         } catch (err) {
-            console.warn("⚠️ Using dummy service orders (backend unavailable)");
-            showNotification("Using dummy service orders (backend not reachable)", "warning");
-        }
-    },
-
-    async postServiceOrderDetails(details) {
-        try {
-            await fetch("http://localhost:5000/post_all_service_order_details", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(details),
-            });
-        } catch (err) {
-            console.error("Failed to post details:", err);
-        }
-    },
-
-    async postServiceOrders(orders) {
-        try {
-            await fetch("http://localhost:5000/post_all_service_orders", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(orders),
-            });
-        } catch (err) {
-            console.error("Failed to post orders:", err);
+            console.error("Error fetching service orders:", err);
+            AppState.data.serviceOrders = [];
+            this.populateTable([]);
         }
     },
 
     async postOneServiceOrder(payload) {
-        try {
-            const res = await fetch("http://localhost:5000/post_one_service_order", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            return await res.json();
-        } catch (err) {
-            console.error("Failed to create order:", err);
-            return null;
-        }
+        return await fetch("http://localhost:5000/post_one_service_order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
     },
 
     populateTable(data) {
@@ -204,12 +141,14 @@ const ServiceOrders = {
         data.forEach(order => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${order.sho || ""}</td>
-                <td>${order.vendor_name || ""}</td>
-                <td>${order.rig_code || ""}</td>
-                <td>${order.required_date || ""}</td>
-                <td>${order.priority || ""}</td>
+                <td>${order.service_order_id}</td>
+                <td>${order.vendor_name}</td>
+                <td>${order.rig_code}</td>
+                <td>${order.well_name}</td>
+                <td>${order.required_date}</td>
+                <td>${order.priority}</td>
                 <td><span class="status-badge">${order.status || "Pending"}</span></td>
+                <td>${order.items?.length || 0}</td>
             `;
             tbody.appendChild(row);
         });
@@ -233,56 +172,11 @@ const ServiceOrders = {
         document.getElementById("createServiceOrderForm").reset();
     },
 
-    // ✅ Upload Excel (two sheets)
-    handleFileUpload(event) {
-        const files = event.target.files;
-        if (!files || files.length < 2) {
-            alert("Please upload both Service Order Details and Service Orders sheets");
-            return;
-        }
-
-        const promises = Array.from(files).map(file =>
-            new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: "array" });
-                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const rows = XLSX.utils.sheet_to_json(sheet);
-                        resolve({ name: file.name, rows });
-                    } catch (err) {
-                        reject(err);
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-            })
-        );
-
-        Promise.all(promises).then(async (results) => {
-            const detailsFile = results.find(f => f.name.toLowerCase().includes("detail"));
-            const ordersFile = results.find(f => f.name.toLowerCase().includes("order"));
-
-            if (!detailsFile || !ordersFile) {
-                alert("Both Details and Orders files must be uploaded");
-                return;
-            }
-
-            await this.postServiceOrderDetails(detailsFile.rows);
-            await this.postServiceOrders(ordersFile.rows);
-            await this.fetchServiceOrders();
-            showNotification("Service Orders imported successfully!", "success");
-        }).catch(err => {
-            console.error("Error processing Excel files:", err);
-            showNotification("Failed to import service orders", "error");
-        });
-    },
-
-    // ✅ Create one order manually
     async handleSubmit(e) {
         e.preventDefault();
 
         const payload = {
+            service_order_id: document.getElementById("so_id").value,
             rig_code: document.getElementById("so_rigCode").value,
             well_name: document.getElementById("so_wellName").value,
             rig_short_name: document.getElementById("so_rigCode").value.substring(0, 3),
@@ -293,24 +187,22 @@ const ServiceOrders = {
             submission_date: new Date().toISOString().split("T")[0],
             submission_time: new Date().toLocaleTimeString(),
             year: new Date().getFullYear(),
-            vendor: document.getElementById("so_vendor").value,
+            vendor: "DefaultVendor",
             vendor_name: document.getElementById("so_vendorName").value,
             comments: document.getElementById("so_comments").value,
-            status: "Pending",
-            details: []
+            items: [
+                {
+                    service_description: "Sample service",
+                    service_category: "Logistics",
+                    quantity: 10,
+                    uom: "EA"
+                }
+            ]
         };
 
-        const saved = await this.postOneServiceOrder(payload);
-        if (saved?.newOrder) {
-            AppState.data.serviceOrders.unshift(saved.newOrder);
-        } else {
-            // fallback to local dummy push
-            AppState.data.serviceOrders.unshift(payload);
-        }
-
-        this.populateTable(AppState.data.serviceOrders);
+        await this.postOneServiceOrder(payload);
+        await this.fetchServiceOrders();
         this.closeCreateModal();
-        updateDashboardCounts();
         showNotification("Service order created successfully!", "success");
     }
 };

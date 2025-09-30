@@ -1,8 +1,6 @@
 // Locations Page
 function loadLocationsPage(container) {
-    if (!container) {
-        container = document.getElementById("main-content");
-    }
+    if (!container) container = document.getElementById("main-content");
     if (!container) {
         console.error("No container found for Locations page");
         return;
@@ -10,12 +8,8 @@ function loadLocationsPage(container) {
 
     const content = `
         <div class="controls">
-            <button class="create-btn" onclick="Locations.openCreateModal()">
-                ➕ Create New
-            </button>
-            <button class="upload-btn" onclick="document.getElementById('locationsFileInput').click()">
-                📄 Upload Excel
-            </button>
+            <button class="create-btn" onclick="Locations.openCreateModal()">➕ Create New</button>
+            <button class="upload-btn" onclick="document.getElementById('locationsFileInput').click()">📄 Upload Excel</button>
             <input type="file" id="locationsFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="Locations.handleFileUpload(event)">
             <input type="text" class="search-box" placeholder="Search locations..." onkeyup="Locations.search(this.value)">
         </div>
@@ -24,17 +18,17 @@ function loadLocationsPage(container) {
             <table>
                 <thead>
                     <tr>
-                        <th>LOCATION DESCRIPTION</th>
-                        <th>LOCATION</th>
-                        <th>WELL NO</th>
-                        <th>NEXT LOCATION</th>
-                        <th>GROUP</th>
-                        <th>DRIVING ROUTE</th>
-                        <th>NETWORK</th>
+                        <th>ID</th>
+                        <th>Description</th>
+                        <th>Coordinates</th>
+                        <th>Well No</th>
+                        <th>Next Location</th>
+                        <th>Group</th>
+                        <th>Driving Route</th>
+                        <th>Network</th>
                     </tr>
                 </thead>
-                <tbody id="locationsTableBody">
-                </tbody>
+                <tbody id="locationsTableBody"></tbody>
             </table>
         </div>
 
@@ -42,52 +36,50 @@ function loadLocationsPage(container) {
         <div id="createLocationModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title">Create New Location</h2>
+                    <h2>Create New Location</h2>
                     <button class="close" onclick="Locations.closeCreateModal()">×</button>
                 </div>
                 <form id="createLocationForm">
                     <div class="form-group">
-                        <label class="form-label">Location Description</label>
+                        <label>Description</label>
                         <input type="text" class="form-input" id="loc_description" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Coordinates</label>
-                        <input type="text" class="form-input" id="loc_coordinates" placeholder="25.363472:1.40" required>
+                        <label>Coordinates</label>
+                        <input type="text" class="form-input" id="loc_coordinates" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Well No</label>
-                        <input type="text" class="form-input" id="loc_wellNo">
+                        <label>Well Number</label>
+                        <input type="text" class="form-input" id="loc_well_number">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Next Location</label>
-                        <input type="text" class="form-input" id="loc_nextLocation">
+                        <label>Next Location</label>
+                        <input type="text" class="form-input" id="loc_next_location">
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Group</label>
-                            <input type="text" class="form-input" id="loc_group">
-                        </div>
-                        <div class="form-group">
-                        <label class="form-label">Driving Route</label>
-                        <input type="text" class="form-input" id="loc_drivingRoute">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Network</label>
-                            <input type="text" class="form-input" id="loc_network">
-                        </div>
+                    <div class="form-group">
+                        <label>Group</label>
+                        <input type="text" class="form-input" id="loc_group_type">
+                    </div>
+                    <div class="form-group">
+                        <label>Driving Route</label>
+                        <input type="text" class="form-input" id="loc_driving_route">
+                    </div>
+                    <div class="form-group">
+                        <label>Network</label>
+                        <input type="text" class="form-input" id="loc_network">
                     </div>
 
-                    <!-- Hidden but still captured extra fields -->
-                    <input type="hidden" id="loc_mealPreparation">
-                    <input type="hidden" id="loc_minimalInteraction">
+                    <!-- Optional fields -->
+                    <input type="hidden" id="loc_meal_preparation">
+                    <input type="hidden" id="loc_minimal_interaction">
                     <input type="hidden" id="loc_area">
-                    <input type="hidden" id="loc_surveyLocation">
+                    <input type="hidden" id="loc_survey_location">
                     <input type="hidden" id="loc_job">
                     <input type="hidden" id="loc_weather">
 
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="Locations.closeCreateModal()">Cancel</button>
-                        <button type="submit" class="btn-primary">Create Location</button>
+                        <button type="submit" class="btn-primary">Create</button>
                     </div>
                 </form>
             </div>
@@ -100,64 +92,23 @@ function loadLocationsPage(container) {
 
 // Locations Module
 const Locations = {
-    // ✅ Dummy data
-    dummyLocations: [
-        {
-            locationDescription: "Main Warehouse",
-            location: "Karachi Port",
-            wellNo: "NB",
-            nextLocation: "Depot A",
-            group: "Group 1",
-            drivingRoute: "Highway 5",
-            network: "North"
-        },
-        {
-            locationDescription: "Depot A",
-            location: "Lahore Industrial Area",
-            wellNo: "12",
-            nextLocation: "Depot B",
-            group: "Group 2",
-            drivingRoute: "Highway 9",
-            network: "Central"
-        },
-        {
-            locationDescription: "Depot B",
-            location: "Islamabad Zone",
-            wellNo: "NB",
-            nextLocation: "Main Warehouse",
-            group: "Group 3",
-            drivingRoute: "M2 Motorway",
-            network: "North"
-        }
-    ],
-
     async init() {
         await this.fetchLocations();
         const form = document.getElementById("createLocationForm");
-        if (form) {
-            form.addEventListener("submit", this.handleSubmit.bind(this));
-        }
+        if (form) form.addEventListener("submit", this.handleSubmit.bind(this));
     },
 
     async fetchLocations() {
         try {
-            // First show dummy data
-            AppState.data.locations = this.dummyLocations;
-            this.populateTable(this.dummyLocations);
-
-            // Then try backend
-            const res = await fetch("/get_all_locations");
-            if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    AppState.data.locations = data;
-                    this.populateTable(data);
-                }
-            } else {
-                console.warn("Backend returned non-OK status:", res.status);
-            }
+            const res = await fetch("http://localhost:5000/get_all_locations");
+            if (!res.ok) throw new Error("Failed to fetch locations");
+            const data = await res.json();
+            AppState.data.locations = data;
+            this.populateTable(data);
         } catch (err) {
-            console.error("Failed to fetch locations, showing dummy data:", err);
+            console.error("Failed to fetch locations:", err);
+            AppState.data.locations = [];
+            this.populateTable([]);
         }
     },
 
@@ -166,25 +117,26 @@ const Locations = {
         if (!tbody) return;
         tbody.innerHTML = "";
 
-        data.forEach(location => {
+        data.forEach(loc => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${location.locationDescription || ""}</td>
-                <td>${location.location || ""}</td>
-                <td>${location.wellNo || "NB"}</td>
-                <td>${location.nextLocation || "NB"}</td>
-                <td>${location.group || ""}</td>
-                <td>${location.drivingRoute || ""}</td>
-                <td>${location.network || ""}</td>
+                <td>${loc.location_id}</td>
+                <td>${loc.location_description}</td>
+                <td>${loc.coordinates}</td>
+                <td>${loc.well_number || ""}</td>
+                <td>${loc.next_location || ""}</td>
+                <td>${loc.group_type || ""}</td>
+                <td>${loc.driving_route || ""}</td>
+                <td>${loc.network || ""}</td>
             `;
             tbody.appendChild(row);
         });
     },
 
     search(term) {
-        const filtered = AppState.data.locations.filter(location =>
-            Object.values(location).some(value =>
-                value && value.toString().toLowerCase().includes(term.toLowerCase())
+        const filtered = AppState.data.locations.filter(loc =>
+            Object.values(loc).some(val =>
+                val && val.toString().toLowerCase().includes(term.toLowerCase())
             )
         );
         this.populateTable(filtered);
@@ -199,88 +151,38 @@ const Locations = {
         document.getElementById("createLocationForm").reset();
     },
 
-    async handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(sheet);
-
-            for (let row of rows) {
-                const newLocation = {
-                    locationDescription: row["Location Description"] || "",
-                    location: row["Location"] || "",
-                    wellNo: row["Well No"] || "NB",
-                    nextLocation: row["Next Location"] || "NB",
-                    group: row["Group"] || "",
-                    drivingRoute: row["Driving Route"] || "",
-                    network: row["Network"] || "",
-                    // hidden extra fields
-                    mealPreparation: row["Meal Preparation"] || "",
-                    minimalInteraction: row["Minimal Interaction"] || "",
-                    area: row["Area"] || "",
-                    surveyLocation: row["Survey Location"] || "",
-                    job: row["Job"] || "",
-                    weather: row["Weather"] || ""
-                };
-
-                try {
-                    await fetch("/post_location", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(newLocation)
-                    });
-                } catch (err) {
-                    console.warn("Backend not available, only storing locally:", err);
-                }
-
-                AppState.data.locations.push(newLocation);
-            }
-
-            this.populateTable();
-            showNotification("Excel data imported successfully!", "success");
-        };
-        reader.readAsArrayBuffer(file);
-    },
-
     async handleSubmit(e) {
         e.preventDefault();
-
-        const newLocation = {
-            locationDescription: document.getElementById("loc_description").value,
-            location: document.getElementById("loc_coordinates").value,
-            wellNo: document.getElementById("loc_wellNo").value || "NB",
-            nextLocation: document.getElementById("loc_nextLocation").value || "NB",
-            group: document.getElementById("loc_group").value,
-            drivingRoute: document.getElementById("loc_drivingRoute").value,
+        const newLoc = {
+            location_description: document.getElementById("loc_description").value,
+            coordinates: document.getElementById("loc_coordinates").value,
+            well_number: document.getElementById("loc_well_number").value,
+            next_location: document.getElementById("loc_next_location").value,
+            group_type: document.getElementById("loc_group_type").value,
+            driving_route: document.getElementById("loc_driving_route").value,
             network: document.getElementById("loc_network").value,
-            // hidden fields
-            mealPreparation: document.getElementById("loc_mealPreparation").value,
-            minimalInteraction: document.getElementById("loc_minimalInteraction").value,
+            meal_preparation: document.getElementById("loc_meal_preparation").value,
+            minimal_interaction: document.getElementById("loc_minimal_interaction").value,
             area: document.getElementById("loc_area").value,
-            surveyLocation: document.getElementById("loc_surveyLocation").value,
+            survey_location: document.getElementById("loc_survey_location").value,
             job: document.getElementById("loc_job").value,
             weather: document.getElementById("loc_weather").value
         };
 
         try {
-            await fetch("/post_location", {
+            await fetch("http://localhost:5000/post_location", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newLocation)
+                body: JSON.stringify(newLoc)
             });
-        } catch (err) {
-            console.warn("Backend not available, only storing locally:", err);
-        }
 
-        AppState.data.locations.unshift(newLocation);
-        this.populateTable();
-        this.closeCreateModal();
-        updateDashboardCounts();
-        showNotification("Location created successfully!", "success");
+            AppState.data.locations.unshift(newLoc);
+            this.populateTable(AppState.data.locations);
+            this.closeCreateModal();
+            showNotification("Location created successfully!", "success");
+        } catch (err) {
+            console.error("Error saving location:", err);
+            showNotification("Failed to save location!", "error");
+        }
     }
 };

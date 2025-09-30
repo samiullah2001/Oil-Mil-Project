@@ -1,300 +1,269 @@
-/**
- * Equipment Page Module
- */
-
-class EquipmentPage {
-    constructor() {
-        this.currentView = 'list';
-        this.selectedItems = [];
-        this.equipmentData = [
-            {
-                sku: '10000',
-                name: '9 5/8" Rotary hand sifter',
-                totalQuantity: 20,
-                availableQuantity: 8,
-                inUsed: 12,
-                status: 'ready',
-                components: [
-                    { name: 'Slip Body', quantity: 4, unit: 'Unit/Pcs' },
-                    { name: 'Slip Segments', quantity: 4, unit: 'Unit/Pcs' },
-                    { name: 'Insert Teeth / Dies', quantity: 7, unit: 'Unit/Pcs' },
-                    { name: 'Handles', quantity: 4, unit: 'Unit/Pcs' }
-                ]
-            }
-        ];
-        this.init();
+// Equipment Page (⚡️ mapped to Vehicles backend)
+function loadEquipmentPage(container) {
+    if (!container) {
+        container = document.getElementById("main-content");
+    }
+    if (!container) {
+        console.error("No container found for Equipment page");
+        return;
     }
 
-    init() {
-        this.setupEventListeners();
-        console.log('Equipment Page Module initialized');
-    }
+    const content = `
+        <div class="controls">
+            <button class="create-btn" onclick="EquipmentPage.openCreateModal()">
+                ➕ Add Vehicle
+            </button>
+            <button class="upload-btn" onclick="document.getElementById('equipmentFileInput').click()">
+                📄 Upload Excel
+            </button>
+            <input type="file" id="equipmentFileInput" accept=".xlsx,.xls,.csv" 
+                   style="display:none" onchange="EquipmentPage.handleFileUpload(event)">
+            <input type="text" class="search-box" placeholder="Search vehicles..." 
+                   onkeyup="EquipmentPage.search(this.value)">
+        </div>
 
-    setupEventListeners() {
-        // navigation
-        document.addEventListener('equipmentPageRequested', () => {
-            this.loadEquipmentPage();
-        });
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>VEHICLE ID</th>
+                        <th>NAME</th>
+                        <th>LICENSE PLATE</th>
+                        <th>DRIVER</th>
+                        <th>STATUS</th>
+                        <th>LOCATION</th>
+                        <th>FUEL EFFICIENCY</th>
+                        <th>UTILIZATION RATE</th>
+                    </tr>
+                </thead>
+                <tbody id="equipmentTableBody"></tbody>
+            </table>
+        </div>
 
-        // UI interactions
-        document.addEventListener('click', (e) => {
-            // Add New Item button
-            if (e.target.id === 'addNewItemBtn') {
-                console.log("Add New Item clicked ✅");
-                this.showAddItemModal();
-            }
-
-            // Close modals
-            if (e.target.id === 'closeDetailsModal' || e.target.id === 'cancelDetailsBtn') {
-                this.closeModal('equipmentDetailsModal');
-            }
-            if (e.target.id === 'closeAddModal' || e.target.id === 'cancelAddBtn') {
-                this.closeModal('addItemModal');
-            }
-
-            // Save
-            if (e.target.id === 'saveAddBtn') {
-                this.handleAddItem();
-            }
-            if (e.target.id === 'saveDetailsBtn') {
-                this.handleSaveDetails();
-            }
-
-            // Equipment details button
-            if (e.target.closest('.equipment-detail-btn')) {
-                const sku = e.target.closest('[data-sku]').dataset.sku;
-                this.showEquipmentDetails(sku);
-            }
-        });
-
-        // Status change
-        document.addEventListener('change', (e) => {
-            if (e.target.classList.contains('status-badge')) {
-                this.handleStatusChange(e);
-            }
-        });
-    }
-
-    loadEquipmentPage() {
-        const mainContent = document.getElementById('main-content');
-        if (!mainContent) return;
-
-        mainContent.innerHTML = this.createEquipmentHTML();
-        this.initializeEquipmentTable();
-    }
-
-    createEquipmentHTML() {
-        return `
-            <div class="equipment-page">
-                <div class="equipment-header">
-                    <div class="page-title">
-                        <h1>Equipment</h1>
-                    </div>
-                    <div class="header-actions">
-                        <button class="btn btn-primary" id="addNewItemBtn">
-                            <i class="icon-plus">➕</i>
-                            Add New Item
-                        </button>
-                    </div>
+        <!-- Create Vehicle Modal -->
+        <div id="createEquipmentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Add Vehicle</h2>
+                    <button class="close" onclick="EquipmentPage.closeCreateModal()">×</button>
                 </div>
-
-                <div class="equipment-table-container">
-                    <table class="equipment-table">
-                        <thead>
-                            <tr>
-                                <th>SKU</th>
-                                <th>ITEM NAME</th>
-                                <th>TOTAL QUANTITY</th>
-                                <th>AVAILABLE QUANTITY</th>
-                                <th>IN USED</th>
-                                <th>STATUS</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="equipmentTableBody"></tbody>
-                    </table>
-                </div>
-
-                <!-- Equipment Details Modal -->
-                <div class="modal" id="equipmentDetailsModal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2>Equipment Details</h2>
-                            <button class="close-btn" id="closeDetailsModal">&times;</button>
-                        </div>
-                        <div class="modal-body" id="equipmentDetailsContent"></div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" id="cancelDetailsBtn">Cancel</button>
-                            <button class="btn btn-primary" id="saveDetailsBtn">Save</button>
-                        </div>
+                <form id="createEquipmentForm">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle ID</label>
+                        <input type="text" class="form-input" id="veh_id" required>
                     </div>
-                </div>
-
-                <!-- Add New Item Modal -->
-                <div class="modal" id="addItemModal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2>Add New Equipment Item</h2>
-                            <button class="close-btn" id="closeAddModal">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="addItemForm" class="equipment-form">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="newItemSku">SKU *</label>
-                                        <input type="text" id="newItemSku" name="sku" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="newItemName">Item Name *</label>
-                                        <input type="text" id="newItemName" name="name" required>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="newItemQuantity">Total Quantity *</label>
-                                        <input type="number" id="newItemQuantity" name="totalQuantity" min="0" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="newItemStatus">Status *</label>
-                                        <select id="newItemStatus" name="status" required>
-                                            <option value="ready">Ready</option>
-                                            <option value="under_inspection">Under Inspection</option>
-                                            <option value="damage">Damage</option>
-                                            <option value="in_use">In Use</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
-                            <button class="btn btn-primary" id="saveAddBtn">Add Item</button>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Name</label>
+                        <input type="text" class="form-input" id="veh_name" required>
                     </div>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label">License Plate</label>
+                        <input type="text" class="form-input" id="veh_plate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Driver Name</label>
+                        <input type="text" class="form-input" id="veh_driver" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="veh_status" required>
+                            <option value="Active">Active</option>
+                            <option value="In Maintenance">In Maintenance</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-input" id="veh_location" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fuel Efficiency (%)</label>
+                        <input type="number" class="form-input" id="veh_fuel" min="0" max="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Utilization Rate (%)</label>
+                        <input type="number" class="form-input" id="veh_util" min="0" max="100" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="EquipmentPage.closeCreateModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Vehicle</button>
+                    </div>
+                </form>
             </div>
-        `;
-    }
+        </div>
+    `;
 
-    initializeEquipmentTable() {
-        const tbody = document.getElementById('equipmentTableBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = this.equipmentData.map(item => this.createEquipmentRow(item)).join('');
-    }
-
-    createEquipmentRow(item) {
-        const statusClass = item.status.replace('_', '-');
-        const statusText = item.status.replace('_', ' ');
-        
-        return `
-            <tr data-sku="${item.sku}">
-                <td class="equipment-sku">${item.sku}</td>
-                <td class="equipment-name">${item.name}</td>
-                <td>${item.totalQuantity}</td>
-                <td>${item.availableQuantity}</td>
-                <td>${item.inUsed}</td>
-                <td>
-                    <select class="status-badge ${statusClass}" data-sku="${item.sku}">
-                        <option value="ready" ${item.status === 'ready' ? 'selected' : ''}>Ready</option>
-                        <option value="under_inspection" ${item.status === 'under_inspection' ? 'selected' : ''}>Under Inspection</option>
-                        <option value="damage" ${item.status === 'damage' ? 'selected' : ''}>Damage</option>
-                        <option value="in_use" ${item.status === 'in_use' ? 'selected' : ''}>In Use</option>
-                    </select>
-                </td>
-                <td>
-                    <div class="equipment-actions">
-                        <button class="action-btn info equipment-detail-btn" title="View Details">ℹ️</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-
-    // ✅ Fixed modal handling
-    showAddItemModal() {
-        const form = document.getElementById('addItemForm');
-        if (form) form.reset();
-        this.showModal('addItemModal');
-    }
-
-    showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'flex'; // force visible
-            modal.classList.add('active');
-        } else {
-            console.error("Modal not found:", modalId);
-        }
-    }
-
-    closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'none';
-            modal.classList.remove('active');
-        }
-    }
-
-    handleAddItem() {
-        const form = document.getElementById('addItemForm');
-        const formData = new FormData(form);
-        
-        const newItem = {
-            sku: formData.get('sku'),
-            name: formData.get('name'),
-            totalQuantity: parseInt(formData.get('totalQuantity')),
-            availableQuantity: parseInt(formData.get('totalQuantity')),
-            inUsed: 0,
-            status: formData.get('status')
-        };
-
-        if (!newItem.sku || !newItem.name || !newItem.totalQuantity) {
-            alert('Please fill all required fields');
-            return;
-        }
-
-        if (this.equipmentData.find(item => item.sku === newItem.sku)) {
-            alert('SKU already exists');
-            return;
-        }
-
-        this.equipmentData.push(newItem);
-        this.initializeEquipmentTable();
-        this.closeModal('addItemModal');
-    }
-
-    handleSaveDetails() {
-        alert("Details saved (demo only)");
-        this.closeModal('equipmentDetailsModal');
-    }
-
-    handleStatusChange(e) {
-        const sku = e.target.dataset.sku;
-        const newStatus = e.target.value;
-
-        const itemIndex = this.equipmentData.findIndex(item => item.sku === sku);
-        if (itemIndex !== -1) {
-            this.equipmentData[itemIndex].status = newStatus;
-            e.target.className = `status-badge ${newStatus.replace('_', '-')}`;
-        }
-    }
-
-    showEquipmentDetails(sku) {
-        const item = this.equipmentData.find(eq => eq.sku === sku);
-        if (!item) return;
-
-        const content = document.getElementById('equipmentDetailsContent');
-        content.innerHTML = `
-            <p><strong>SKU:</strong> ${item.sku}</p>
-            <p><strong>Item Name:</strong> ${item.name}</p>
-            <p><strong>Status:</strong> ${item.status}</p>
-        `;
-
-        this.showModal('equipmentDetailsModal');
-    }
+    container.innerHTML = content;
+    EquipmentPage.init();
 }
 
-// ✅ Singleton instance
-const equipmentPage = new EquipmentPage();
-window.EquipmentPage = equipmentPage;
+// Equipment (Vehicles) Module
+const EquipmentPage = {
+    async init() {
+        // Dummy fallback data
+        AppState.data.equipment = [
+            {
+                vehicle_id: "V001",
+                vehicle_name: "Truck A",
+                license_plate: "ABC1234",
+                driver_name: "John Doe",
+                status: "Active",
+                location: "Karachi",
+                fuel_efficiency: 85,
+                utilization_rate: 70
+            },
+            {
+                vehicle_id: "V002",
+                vehicle_name: "Van B",
+                license_plate: "XYZ5678",
+                driver_name: "Ali Khan",
+                status: "In Maintenance",
+                location: "Lahore",
+                fuel_efficiency: 65,
+                utilization_rate: 40
+            }
+        ];
+        this.populateTable(AppState.data.equipment);
+
+        // Fetch backend data
+        await this.fetchEquipment();
+
+        const form = document.getElementById("createEquipmentForm");
+        if (form) {
+            form.addEventListener("submit", this.handleSubmit.bind(this));
+        }
+    },
+
+    async fetchEquipment() {
+        try {
+            const res = await fetch("http://localhost:5000/get_all_vehicles");
+            if (!res.ok) throw new Error("Failed to fetch vehicles");
+            const data = await res.json();
+            AppState.data.equipment = data;
+            this.populateTable(data);
+        } catch (err) {
+            console.error("Failed to fetch vehicles:", err);
+            showNotification("Could not load vehicles", "error");
+        }
+    },
+
+    async saveEquipmentToServer(vehicle) {
+        try {
+            const res = await fetch("http://localhost:5000/post_vehicle", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(vehicle),
+            });
+            if (!res.ok) throw new Error("Failed to save vehicle");
+            return await res.json();
+        } catch (err) {
+            console.error("Error posting vehicle:", err);
+            showNotification("Failed to save vehicle", "error");
+        }
+    },
+
+    populateTable(data = AppState.data.equipment) {
+        const tbody = document.getElementById("equipmentTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        data.forEach(vehicle => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${vehicle.vehicle_id}</td>
+                <td>${vehicle.vehicle_name}</td>
+                <td>${vehicle.license_plate}</td>
+                <td>${vehicle.driver_name}</td>
+                <td>${vehicle.status}</td>
+                <td>${vehicle.location}</td>
+                <td>${vehicle.fuel_efficiency || 0}%</td>
+                <td>${vehicle.utilization_rate || 0}%</td>
+            `;
+            tbody.appendChild(row);
+        });
+    },
+
+    search(term) {
+        const filtered = AppState.data.equipment.filter(vehicle =>
+            Object.values(vehicle).some(value =>
+                value && value.toString().toLowerCase().includes(term.toLowerCase())
+            )
+        );
+        this.populateTable(filtered);
+    },
+
+    openCreateModal() {
+        document.getElementById("createEquipmentModal").style.display = "block";
+    },
+
+    closeCreateModal() {
+        document.getElementById("createEquipmentModal").style.display = "none";
+        document.getElementById("createEquipmentForm").reset();
+    },
+
+    async handleSubmit(e) {
+        e.preventDefault();
+
+        const newVehicle = {
+            vehicle_id: document.getElementById("veh_id").value,
+            vehicle_name: document.getElementById("veh_name").value,
+            license_plate: document.getElementById("veh_plate").value,
+            driver_name: document.getElementById("veh_driver").value,
+            status: document.getElementById("veh_status").value,
+            location: document.getElementById("veh_location").value,
+            fuel_efficiency: parseInt(document.getElementById("veh_fuel").value, 10),
+            utilization_rate: parseInt(document.getElementById("veh_util").value, 10),
+        };
+
+        const saved = await this.saveEquipmentToServer(newVehicle);
+        if (saved) {
+            AppState.data.equipment.unshift(newVehicle);
+            this.populateTable(AppState.data.equipment);
+            this.closeCreateModal();
+            updateDashboardCounts();
+            showNotification("Vehicle added successfully!", "success");
+        }
+    },
+
+    // ✅ Bulk Import Vehicles from Excel/CSV
+    handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet);
+
+                for (const row of rows) {
+                    const newVehicle = {
+                        vehicle_id: row["Vehicle ID"] || "",
+                        vehicle_name: row["Vehicle Name"] || "",
+                        license_plate: row["License Plate"] || "",
+                        driver_name: row["Driver Name"] || "",
+                        status: row["Status"] || "Active",
+                        location: row["Location"] || "",
+                        fuel_efficiency: row["Fuel Efficiency"] || 0,
+                        utilization_rate: row["Utilization Rate"] || 0,
+                    };
+                    await this.saveEquipmentToServer(newVehicle);
+                }
+
+                await this.fetchEquipment();
+                showNotification("Excel data imported successfully!", "success");
+            } catch (err) {
+                console.error("Error importing vehicles:", err);
+                showNotification("Failed to import vehicles", "error");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+};
+
+// Add at the bottom of equipment-page.js
+window.EquipmentPage = {
+    ...EquipmentPage,
+    loadEquipmentPage
+};
