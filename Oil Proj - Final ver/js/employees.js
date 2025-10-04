@@ -28,10 +28,10 @@ function loadEmployeesPage(container) {
                     <tr>
                         <th>EMPLOYEE ID</th>
                         <th>NAME</th>
-                        <th>POSITION</th>
                         <th>DEPARTMENT</th>
-                        <th>EMAIL</th>
-                        <th>PHONE</th>
+                        <th>JOB ROLE</th>
+                        <th>STATUS</th>
+                        <th>OVERALL SCORE</th>
                     </tr>
                 </thead>
                 <tbody id="employeesTableBody"></tbody>
@@ -55,20 +55,21 @@ function loadEmployeesPage(container) {
                         <input type="text" class="form-input" id="emp_name" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Position</label>
-                        <input type="text" class="form-input" id="emp_position" required>
-                    </div>
-                    <div class="form-group">
                         <label class="form-label">Department</label>
-                        <input type="text" class="form-input" id="emp_department">
+                        <input type="text" class="form-input" id="emp_department" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-input" id="emp_email">
+                        <label class="form-label">Job Role</label>
+                        <input type="text" class="form-input" id="emp_jobRole" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Phone</label>
-                        <input type="text" class="form-input" id="emp_phone">
+                        <label class="form-label">Status</label>
+                        <select id="emp_status" class="form-select" required>
+                            <option value="">Select Status</option>
+                            <option value="On Rig">On Rig</option>
+                            <option value="Standby">Standby</option>
+                            <option value="Rotational Leave">Rotational Leave</option>
+                        </select>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="Employees.closeCreateModal()">Cancel</button>
@@ -85,79 +86,31 @@ function loadEmployeesPage(container) {
 
 // Employees Module
 const Employees = {
-    dummyData: [
-        {
-            employeeId: "E001",
-            name: "Ali Khan",
-            position: "Field Engineer",
-            department: "Operations",
-            email: "ali.khan@example.com",
-            phone: "03001234567",
-        },
-        {
-            employeeId: "E002",
-            name: "Sara Ahmed",
-            position: "Logistics Manager",
-            department: "Logistics",
-            email: "sara.ahmed@example.com",
-            phone: "03007654321",
-        },
-        {
-            employeeId: "E003",
-            name: "John Doe",
-            position: "Technician",
-            department: "Maintenance",
-            email: "john.doe@example.com",
-            phone: "03009876543",
-        }
-    ],
-
     async init() {
-        // ✅ show dummy first
-        AppState.data.employees = [...this.dummyData];
-        this.populateTable(AppState.data.employees);
-        updateDashboardCounts();
-
-        // then try backend fetch
         await this.fetchEmployees();
-
         const form = document.getElementById("createEmployeeForm");
         if (form) {
             form.addEventListener("submit", this.handleSubmit.bind(this));
         }
     },
 
+    // ✅ Fetch employees from backend
     async fetchEmployees() {
         try {
-            const res = await fetch("http://localhost:5000/get_all_employees");
+            const res = await fetch("http://localhost:8000/get_all_employees");
             if (!res.ok) throw new Error("Failed to fetch employees");
-            const data = await res.json();
-            AppState.data.employees = data;
-            this.populateTable(data);
-            updateDashboardCounts();
-            console.log("✅ Employees loaded from backend");
+            const result = await res.json();
+
+            AppState.data.employees = result.data || [];
+            this.populateTable(AppState.data.employees);
         } catch (err) {
-            console.warn("⚠️ Using dummy employees data (backend unavailable)");
-            showNotification("Using dummy employees data (backend not reachable)", "warning");
+            console.error("Failed to fetch employees:", err);
+            AppState.data.employees = [];
+            this.populateTable([]);
         }
     },
 
-    async postEmployee(employee) {
-        try {
-            const res = await fetch("http://localhost:5000/post_all_employees", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(employee),
-            });
-            if (!res.ok) throw new Error("Failed to post employee");
-            const saved = await res.json();
-            return saved;
-        } catch (err) {
-            console.error("Error posting employee:", err);
-            showNotification("Failed to save employee to server, added locally", "warning");
-        }
-    },
-
+    // ✅ Populate table using backend field names
     populateTable(data = AppState.data.employees) {
         const tbody = document.getElementById("employeesTableBody");
         if (!tbody) return;
@@ -166,12 +119,12 @@ const Employees = {
         data.forEach(emp => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${emp.employeeId}</td>
-                <td>${emp.name}</td>
-                <td>${emp.position}</td>
+                <td>${emp.employee_id || ""}</td>
+                <td>${emp.employee_name || ""}</td>
                 <td>${emp.department || ""}</td>
-                <td>${emp.email || ""}</td>
-                <td>${emp.phone || ""}</td>
+                <td>${emp.job_role || ""}</td>
+                <td>${emp.employee_status || ""}</td>
+                <td>${emp.overall_score ?? "-"}</td>
             `;
             tbody.appendChild(row);
         });
@@ -188,8 +141,6 @@ const Employees = {
 
     openCreateModal() {
         document.getElementById("createEmployeeModal").style.display = "block";
-        const nextId = "E" + String(AppState.data.employees.length + 1).padStart(3, "0");
-        document.getElementById("emp_id").value = nextId;
     },
 
     closeCreateModal() {
@@ -197,63 +148,40 @@ const Employees = {
         document.getElementById("createEmployeeForm").reset();
     },
 
-    // Upload Excel/CSV
-    handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: "array" });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet);
-
-                for (const row of rows) {
-                    const newEmployee = {
-                        employeeId: row["Employee ID"] || "",
-                        name: row["Name"] || "",
-                        position: row["Position"] || "",
-                        department: row["Department"] || "",
-                        email: row["Email"] || "",
-                        phone: row["Phone"] || "",
-                    };
-                    await this.postEmployee(newEmployee);
-                }
-
-                await this.fetchEmployees();
-                showNotification("Excel data imported successfully!", "success");
-            } catch (err) {
-                console.error("Error importing employees:", err);
-                showNotification("Failed to import employees", "error");
-            }
-        };
-        reader.readAsArrayBuffer(file);
+    // ✅ Post employee to backend
+    async postEmployee(employee) {
+        try {
+            const res = await fetch("http://localhost:8000/post_employee", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(employee)
+            });
+            return await res.json();
+        } catch (err) {
+            console.error("Error posting employee:", err);
+        }
     },
 
     async handleSubmit(e) {
         e.preventDefault();
 
         const newEmployee = {
-            employeeId: document.getElementById("emp_id").value,
-            name: document.getElementById("emp_name").value,
-            position: document.getElementById("emp_position").value,
+            employee_id: document.getElementById("emp_id").value,
+            employee_name: document.getElementById("emp_name").value,
             department: document.getElementById("emp_department").value,
-            email: document.getElementById("emp_email").value,
-            phone: document.getElementById("emp_phone").value,
+            job_role: document.getElementById("emp_jobRole").value,
+            employee_status: document.getElementById("emp_status").value,
+            job_completion_rate: 80,
+            safety_compliance: 90,
+            overall_score: 85
         };
 
-        const saved = await this.postEmployee(newEmployee);
-        if (saved?.newEmployee) {
-            AppState.data.employees.unshift(saved.newEmployee);
-        } else {
-            AppState.data.employees.unshift(newEmployee); // fallback local
-        }
-
-        this.populateTable(AppState.data.employees);
+        await this.postEmployee(newEmployee);
+        await this.fetchEmployees();
         this.closeCreateModal();
-        updateDashboardCounts();
         showNotification("Employee created successfully!", "success");
     }
 };
+
+// ✅ Expose globally
+window.loadEmployeesPage = loadEmployeesPage;
