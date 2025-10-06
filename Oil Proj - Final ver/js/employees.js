@@ -32,6 +32,7 @@ function loadEmployeesPage(container) {
                         <th>JOB ROLE</th>
                         <th>STATUS</th>
                         <th>OVERALL SCORE</th>
+                        <th>ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody id="employeesTableBody"></tbody>
@@ -78,6 +79,21 @@ function loadEmployeesPage(container) {
                 </form>
             </div>
         </div>
+
+        <!-- View Employee Modal -->
+        <div id="viewEmployeeModal" class="modal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h2 class="modal-title">Employee Details</h2>
+                    <button class="close" onclick="Employees.closeViewModal()">×</button>
+                </div>
+                <div id="viewEmployeeDetails" class="modal-body"></div>
+                <div class="modal-footer">
+                    <button class="btn-danger" id="deleteEmployeeBtn">🗑 Delete</button>
+                    <button class="btn-secondary" onclick="Employees.closeViewModal()">Close</button>
+                </div>
+            </div>
+        </div>
     `;
 
     container.innerHTML = content;
@@ -89,12 +105,9 @@ const Employees = {
     async init() {
         await this.fetchEmployees();
         const form = document.getElementById("createEmployeeForm");
-        if (form) {
-            form.addEventListener("submit", this.handleSubmit.bind(this));
-        }
+        if (form) form.addEventListener("submit", this.handleSubmit.bind(this));
     },
 
-    // ✅ Fetch employees from backend
     async fetchEmployees() {
         try {
             const res = await fetch("http://localhost:8000/get_all_employees");
@@ -110,7 +123,6 @@ const Employees = {
         }
     },
 
-    // ✅ Populate table using backend field names
     populateTable(data = AppState.data.employees) {
         const tbody = document.getElementById("employeesTableBody");
         if (!tbody) return;
@@ -125,6 +137,9 @@ const Employees = {
                 <td>${emp.job_role || ""}</td>
                 <td>${emp.employee_status || ""}</td>
                 <td>${emp.overall_score ?? "-"}</td>
+                <td>
+                    <button class="btn-view" onclick="Employees.viewEmployee('${emp.employee_id}')">👁 View</button>
+                </td>
             `;
             tbody.appendChild(row);
         });
@@ -148,7 +163,6 @@ const Employees = {
         document.getElementById("createEmployeeForm").reset();
     },
 
-    // ✅ Post employee to backend
     async postEmployee(employee) {
         try {
             const res = await fetch("http://localhost:8000/post_employee", {
@@ -180,8 +194,57 @@ const Employees = {
         await this.fetchEmployees();
         this.closeCreateModal();
         showNotification("Employee created successfully!", "success");
+    },
+
+    // 🔍 View full employee details
+    viewEmployee(employeeId) {
+        const emp = AppState.data.employees.find(e => e.employee_id === employeeId);
+        if (!emp) return;
+
+        const details = Object.entries(emp)
+            .map(([key, value]) => `
+                <div class="detail-row">
+                    <strong>${key.replace(/_/g, " ")}:</strong> ${value ?? ""}
+                </div>
+            `)
+            .join("");
+
+        const modalBody = document.getElementById("viewEmployeeDetails");
+        if (modalBody) modalBody.innerHTML = details;
+
+        // Set delete button behavior
+        const deleteBtn = document.getElementById("deleteEmployeeBtn");
+        deleteBtn.onclick = () => this.deleteEmployee(employeeId);
+
+        document.getElementById("viewEmployeeModal").style.display = "block";
+    },
+
+    closeViewModal() {
+        document.getElementById("viewEmployeeModal").style.display = "none";
+        document.getElementById("viewEmployeeDetails").innerHTML = "";
+    },
+
+    // 🗑 Delete employee from backend
+    async deleteEmployee(employeeId) {
+        if (!confirm("Are you sure you want to delete this employee?")) return;
+
+        try {
+            const res = await fetch(`http://localhost:8000/delete_employee/${employeeId}`, {
+                method: "DELETE"
+            });
+
+            if (!res.ok) throw new Error("Failed to delete employee");
+
+            showNotification("Employee deleted successfully!", "success");
+            this.closeViewModal();
+            await this.fetchEmployees();
+        } catch (err) {
+            console.error("Error deleting employee:", err);
+            showNotification("Failed to delete employee", "error");
+        }
     }
 };
 
 // ✅ Expose globally
 window.loadEmployeesPage = loadEmployeesPage;
+window.Employees = Employees;

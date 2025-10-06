@@ -8,10 +8,16 @@ function loadLocationsPage(container) {
 
     const content = `
         <div class="controls">
-            <button class="create-btn" onclick="Locations.openCreateModal()">➕ Create New</button>
-            <button class="upload-btn" onclick="document.getElementById('locationsFileInput').click()">📄 Upload Excel</button>
-            <input type="file" id="locationsFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="Locations.handleFileUpload(event)">
-            <input type="text" class="search-box" placeholder="Search locations..." onkeyup="Locations.search(this.value)">
+            <button class="create-btn" onclick="Locations.openCreateModal()">
+                ➕ Create New
+            </button>
+            <button class="upload-btn" onclick="document.getElementById('locationsFileInput').click()">
+                📄 Upload Excel
+            </button>
+            <input type="file" id="locationsFileInput" accept=".xlsx,.xls,.csv"
+                   style="display:none" onchange="Locations.handleFileUpload(event)">
+            <input type="text" class="search-box" placeholder="Search locations..."
+                   onkeyup="Locations.search(this.value)">
         </div>
 
         <div class="table-container">
@@ -21,11 +27,12 @@ function loadLocationsPage(container) {
                         <th>ID</th>
                         <th>Description</th>
                         <th>Coordinates</th>
-                        <th>Well No</th>
+                        <th>Well Number</th>
                         <th>Next Location</th>
                         <th>Group</th>
                         <th>Driving Route</th>
                         <th>Network</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="locationsTableBody"></tbody>
@@ -68,20 +75,26 @@ function loadLocationsPage(container) {
                         <label>Network</label>
                         <input type="text" class="form-input" id="loc_network">
                     </div>
-
-                    <!-- Optional fields -->
-                    <input type="hidden" id="loc_meal_preparation">
-                    <input type="hidden" id="loc_minimal_interaction">
-                    <input type="hidden" id="loc_area">
-                    <input type="hidden" id="loc_survey_location">
-                    <input type="hidden" id="loc_job">
-                    <input type="hidden" id="loc_weather">
-
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="Locations.closeCreateModal()">Cancel</button>
                         <button type="submit" class="btn-primary">Create</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- View Location Modal -->
+        <div id="viewLocationModal" class="modal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h2>Location Details</h2>
+                    <button class="close" onclick="Locations.closeViewModal()">×</button>
+                </div>
+                <div id="viewLocationDetails" class="modal-body"></div>
+                <div class="modal-footer">
+                    <button class="btn-danger" id="deleteLocationBtn">🗑 Delete</button>
+                    <button class="btn-secondary" onclick="Locations.closeViewModal()">Close</button>
+                </div>
             </div>
         </div>
     `;
@@ -100,11 +113,12 @@ const Locations = {
 
     async fetchLocations() {
         try {
-            const res = await fetch("http://localhost:5000/get_all_locations");
+            const res = await fetch("http://localhost:8000/get_all_locations");
             if (!res.ok) throw new Error("Failed to fetch locations");
-            const data = await res.json();
-            AppState.data.locations = data;
-            this.populateTable(data);
+            const result = await res.json();
+
+            AppState.data.locations = result.data || [];
+            this.populateTable(AppState.data.locations);
         } catch (err) {
             console.error("Failed to fetch locations:", err);
             AppState.data.locations = [];
@@ -120,14 +134,17 @@ const Locations = {
         data.forEach(loc => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${loc.location_id}</td>
-                <td>${loc.location_description}</td>
-                <td>${loc.coordinates}</td>
+                <td>${loc.location_id || ""}</td>
+                <td>${loc.location_description || ""}</td>
+                <td>${loc.coordinates || ""}</td>
                 <td>${loc.well_number || ""}</td>
                 <td>${loc.next_location || ""}</td>
                 <td>${loc.group_type || ""}</td>
                 <td>${loc.driving_route || ""}</td>
                 <td>${loc.network || ""}</td>
+                <td>
+                    <button class="btn-view" onclick="Locations.viewLocation(${loc.location_id})">👁 View</button>
+                </td>
             `;
             tbody.appendChild(row);
         });
@@ -135,8 +152,8 @@ const Locations = {
 
     search(term) {
         const filtered = AppState.data.locations.filter(loc =>
-            Object.values(loc).some(val =>
-                val && val.toString().toLowerCase().includes(term.toLowerCase())
+            Object.values(loc).some(value =>
+                value && value.toString().toLowerCase().includes(term.toLowerCase())
             )
         );
         this.populateTable(filtered);
@@ -151,9 +168,23 @@ const Locations = {
         document.getElementById("createLocationForm").reset();
     },
 
+    async postLocation(location) {
+        try {
+            const res = await fetch("http://localhost:8000/post_location", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(location)
+            });
+            return await res.json();
+        } catch (err) {
+            console.error("Error posting location:", err);
+        }
+    },
+
     async handleSubmit(e) {
         e.preventDefault();
-        const newLoc = {
+
+        const newLocation = {
             location_description: document.getElementById("loc_description").value,
             coordinates: document.getElementById("loc_coordinates").value,
             well_number: document.getElementById("loc_well_number").value,
@@ -161,28 +192,62 @@ const Locations = {
             group_type: document.getElementById("loc_group_type").value,
             driving_route: document.getElementById("loc_driving_route").value,
             network: document.getElementById("loc_network").value,
-            meal_preparation: document.getElementById("loc_meal_preparation").value,
-            minimal_interaction: document.getElementById("loc_minimal_interaction").value,
-            area: document.getElementById("loc_area").value,
-            survey_location: document.getElementById("loc_survey_location").value,
-            job: document.getElementById("loc_job").value,
-            weather: document.getElementById("loc_weather").value
         };
 
+        await this.postLocation(newLocation);
+        await this.fetchLocations();
+        this.closeCreateModal();
+        showNotification("Location created successfully!", "success");
+    },
+
+    // 🔍 View full details
+    viewLocation(locationId) {
+        const loc = AppState.data.locations.find(l => l.location_id == locationId);
+        if (!loc) return;
+
+        const details = Object.entries(loc)
+            .map(([key, value]) => `
+                <div class="detail-row">
+                    <strong>${key.replace(/_/g, " ")}:</strong> ${value ?? ""}
+                </div>
+            `)
+            .join("");
+
+        const modalBody = document.getElementById("viewLocationDetails");
+        if (modalBody) modalBody.innerHTML = details;
+
+        const deleteBtn = document.getElementById("deleteLocationBtn");
+        deleteBtn.onclick = () => this.deleteLocation(locationId);
+
+        document.getElementById("viewLocationModal").style.display = "block";
+    },
+
+    closeViewModal() {
+        document.getElementById("viewLocationModal").style.display = "none";
+        document.getElementById("viewLocationDetails").innerHTML = "";
+    },
+
+    // 🗑 Delete record
+    async deleteLocation(locationId) {
+        if (!confirm("Are you sure you want to delete this location?")) return;
+
         try {
-            await fetch("http://localhost:5000/post_location", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newLoc)
+            const res = await fetch(`http://localhost:8000/delete_location/${locationId}`, {
+                method: "DELETE"
             });
 
-            AppState.data.locations.unshift(newLoc);
-            this.populateTable(AppState.data.locations);
-            this.closeCreateModal();
-            showNotification("Location created successfully!", "success");
+            if (!res.ok) throw new Error("Failed to delete location");
+
+            showNotification("Location deleted successfully!", "success");
+            this.closeViewModal();
+            await this.fetchLocations();
         } catch (err) {
-            console.error("Error saving location:", err);
-            showNotification("Failed to save location!", "error");
+            console.error("Error deleting location:", err);
+            showNotification("Failed to delete location", "error");
         }
     }
 };
+
+// ✅ Expose globally
+window.loadLocationsPage = loadLocationsPage;
+window.Locations = Locations;

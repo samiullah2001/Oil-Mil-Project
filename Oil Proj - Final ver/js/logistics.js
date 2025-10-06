@@ -1,8 +1,6 @@
-// Logistics Page
+// Logistics Page (mapped to Vehicles backend)
 function loadLogisticsPage(container) {
-    if (!container) {
-        container = document.getElementById("main-content");
-    }
+    if (!container) container = document.getElementById("main-content");
     if (!container) {
         console.error("No container found for Logistics page");
         return;
@@ -16,69 +14,88 @@ function loadLogisticsPage(container) {
             <button class="upload-btn" onclick="document.getElementById('logisticsFileInput').click()">
                 📄 Upload Excel
             </button>
-            <input type="file" id="logisticsFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="LogisticsModule.handleFileUpload(event)">
-            <input type="text" class="search-box" placeholder="Search logistics..." onkeyup="LogisticsModule.search(this.value)">
+            <input type="file" id="logisticsFileInput" accept=".xlsx,.xls,.csv"
+                   style="display:none" onchange="LogisticsModule.handleFileUpload(event)">
+            <input type="text" class="search-box" placeholder="Search vehicles..."
+                   onkeyup="LogisticsModule.search(this.value)">
         </div>
 
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <th>SHO</th>
-                        <th>VENDOR NAME</th>
-                        <th>DELIVER FROM</th>
-                        <th>DELIVER TO</th>
-                        <th>COMPANY NAME</th>
-                        <th>STATUS</th>
+                        <th>Vehicle ID</th>
+                        <th>Driver Name</th>
+                        <th>License Plate</th>
+                        <th>Status</th>
+                        <th>Location</th>
+                        <th>Booking</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="logisticsTableBody"></tbody>
             </table>
         </div>
 
-        <!-- Create Logistics Modal -->
+        <!-- Create Vehicle Modal -->
         <div id="createLogisticsModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title">Create New Logistics Entry</h2>
+                    <h2>Create New Vehicle</h2>
                     <button class="close" onclick="LogisticsModule.closeCreateModal()">×</button>
                 </div>
                 <form id="createLogisticsForm">
                     <div class="form-group">
-                        <label class="form-label">SHO</label>
-                        <input type="text" class="form-input" id="log_sho" required>
+                        <label>Vehicle ID</label>
+                        <input type="text" class="form-input" id="log_vehicleId" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Vendor Name</label>
-                        <input type="text" class="form-input" id="log_vendorName" required>
+                        <label>Driver Name</label>
+                        <input type="text" class="form-input" id="log_driverName" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Deliver From</label>
-                        <input type="text" class="form-input" id="log_deliverFrom" required>
+                        <label>License Plate</label>
+                        <input type="text" class="form-input" id="log_licensePlate" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Deliver To</label>
-                        <input type="text" class="form-input" id="log_deliverTo" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Company Name</label>
-                        <input type="text" class="form-input" id="log_companyName" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
+                        <label>Status</label>
                         <select class="form-select" id="log_status" required>
-                            <option value="">Select Status</option>
-                            <option value="On Process">On Process</option>
-                            <option value="Completed">Completed</option>
-                            <option value="In Transit">In Transit</option>
-                            <option value="Delayed">Delayed</option>
+                            <option value="">Select</option>
+                            <option value="Active">Active</option>
+                            <option value="In Maintenance">In Maintenance</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Location</label>
+                        <input type="text" class="form-input" id="log_location" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Booking Status</label>
+                        <select class="form-select" id="log_booking" required>
+                            <option value="Available">Available</option>
+                            <option value="Booked">Booked</option>
                         </select>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="LogisticsModule.closeCreateModal()">Cancel</button>
-                        <button type="submit" class="btn-primary">Create Entry</button>
+                        <button type="submit" class="btn-primary">Create</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- View Vehicle Modal -->
+        <div id="viewVehicleModal" class="modal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h2>Vehicle Details</h2>
+                    <button class="close" onclick="LogisticsModule.closeViewModal()">×</button>
+                </div>
+                <div id="viewVehicleDetails" class="modal-body"></div>
+                <div class="modal-footer">
+                    <button class="btn-danger" id="deleteVehicleBtn">🗑 Delete</button>
+                    <button class="btn-secondary" onclick="LogisticsModule.closeViewModal()">Close</button>
+                </div>
             </div>
         </div>
     `;
@@ -89,98 +106,53 @@ function loadLogisticsPage(container) {
 
 // Logistics Module
 const LogisticsModule = {
-    dummyData: [
-        {
-            sho: "00001",
-            vendorName: "Vendor A",
-            deliverFrom: "Karachi",
-            deliverTo: "Lahore",
-            companyName: "FastTrans Logistics",
-            status: "On Process",
-        },
-        {
-            sho: "00002",
-            vendorName: "Vendor B",
-            deliverFrom: "Islamabad",
-            deliverTo: "Multan",
-            companyName: "QuickMove Pvt Ltd",
-            status: "Completed",
-        },
-        {
-            sho: "00003",
-            vendorName: "Vendor C",
-            deliverFrom: "Quetta",
-            deliverTo: "Peshawar",
-            companyName: "SafeLine Transport",
-            status: "In Transit",
-        }
-    ],
-
     async init() {
-        // ✅ show dummy first
-        AppState.data.logistics = [...this.dummyData];
-        this.populateTable(AppState.data.logistics);
-        updateDashboardCounts();
-
-        // then try backend fetch
-        await this.fetchLogistics();
-
+        await this.fetchVehicles();
         const form = document.getElementById("createLogisticsForm");
-        if (form) {
-            form.addEventListener("submit", this.handleSubmit.bind(this));
-        }
+        if (form) form.addEventListener("submit", this.handleSubmit.bind(this));
     },
 
-    async fetchLogistics() {
+    async fetchVehicles() {
         try {
-            const res = await fetch("http://localhost:5000/get_all_logistics");
-            if (!res.ok) throw new Error("Failed to fetch logistics");
-            const data = await res.json();
-            AppState.data.logistics = data;
-            this.populateTable(data);
-            updateDashboardCounts();
-            console.log("✅ Logistics loaded from backend");
+            const res = await fetch("http://localhost:8000/get_all_vehicles");
+            if (!res.ok) throw new Error("Failed to fetch vehicles");
+            const result = await res.json();
+
+            AppState.data.vehicles = result.data || [];
+            this.populateTable(AppState.data.vehicles);
         } catch (err) {
-            console.warn("⚠️ Using dummy logistics data (backend unavailable)");
-            showNotification("Using dummy logistics data (backend not reachable)", "warning");
+            console.error("Failed to fetch vehicles:", err);
+            AppState.data.vehicles = [];
+            this.populateTable([]);
         }
     },
 
-    populateTable(data = AppState.data.logistics) {
+    populateTable(data = AppState.data.vehicles) {
         const tbody = document.getElementById("logisticsTableBody");
         if (!tbody) return;
         tbody.innerHTML = "";
 
-        data.forEach((item) => {
+        data.forEach(vehicle => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${item.sho}</td>
-                <td>${item.vendorName}</td>
-                <td>${item.deliverFrom}</td>
-                <td>${item.deliverTo}</td>
-                <td>${item.companyName}</td>
-                <td><span class="status-badge ${this.getStatusClass(item.status)}">${item.status}</span></td>
+                <td>${vehicle.vehicle_id || ""}</td>
+                <td>${vehicle.driver_name || ""}</td>
+                <td>${vehicle.license_plate || ""}</td>
+                <td>${vehicle.status || ""}</td>
+                <td>${vehicle.location || ""}</td>
+                <td>${vehicle.booking_status || ""}</td>
+                <td>
+                    <button class="btn-view" onclick="LogisticsModule.viewVehicle('${vehicle.vehicle_id}')">👁 View</button>
+                </td>
             `;
             tbody.appendChild(row);
         });
     },
 
-    getStatusClass(status) {
-        const statusMap = {
-            "completed": "status-completed",
-            "on process": "status-on-process",
-            "in transit": "status-in-transit",
-            "delayed": "status-delayed",
-        };
-        return statusMap[status?.toLowerCase()] || "status-on-process";
-    },
-
     search(term) {
-        const filtered = AppState.data.logistics.filter((item) =>
-            Object.values(item).some(
-                (value) =>
-                    value &&
-                    value.toString().toLowerCase().includes(term.toLowerCase())
+        const filtered = AppState.data.vehicles.filter(v =>
+            Object.values(v).some(value =>
+                value && value.toString().toLowerCase().includes(term.toLowerCase())
             )
         );
         this.populateTable(filtered);
@@ -188,8 +160,6 @@ const LogisticsModule = {
 
     openCreateModal() {
         document.getElementById("createLogisticsModal").style.display = "block";
-        const nextSHO = String(AppState.data.logistics.length + 1).padStart(5, "0");
-        document.getElementById("log_sho").value = nextSHO;
     },
 
     closeCreateModal() {
@@ -197,80 +167,86 @@ const LogisticsModule = {
         document.getElementById("createLogisticsForm").reset();
     },
 
-    // Upload Excel
-    handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: "array" });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet);
-
-                for (const row of rows) {
-                    const newLogistics = {
-                        sho: row.SHO || "",
-                        vendorName: row["Vendor Name"] || "",
-                        deliverFrom: row["Deliver From"] || "",
-                        deliverTo: row["Deliver To"] || "",
-                        companyName: row["Company Name"] || "",
-                        status: row.Status || "On Process",
-                    };
-                    await this.saveLogisticsToServer(newLogistics);
-                }
-
-                await this.fetchLogistics();
-                updateDashboardCounts();
-                showNotification("Excel data imported successfully!", "success");
-            } catch (err) {
-                console.error("Excel import failed:", err);
-                showNotification("Excel import failed", "error");
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    },
-
-    async saveLogisticsToServer(newLogistics) {
+    async postVehicle(vehicle) {
         try {
-            const res = await fetch("http://localhost:5000/post_logistics", {
+            const res = await fetch("http://localhost:8000/post_vehicle", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newLogistics),
+                body: JSON.stringify(vehicle)
             });
-            if (!res.ok) throw new Error("Failed to save logistics");
             return await res.json();
         } catch (err) {
-            console.error("Error posting logistics:", err);
-            showNotification("Failed to save logistics entry", "error");
+            console.error("Error posting vehicle:", err);
         }
     },
 
     async handleSubmit(e) {
         e.preventDefault();
 
-        const newLogistics = {
-            sho: document.getElementById("log_sho").value,
-            vendorName: document.getElementById("log_vendorName").value,
-            deliverFrom: document.getElementById("log_deliverFrom").value,
-            deliverTo: document.getElementById("log_deliverTo").value,
-            companyName: document.getElementById("log_companyName").value,
+        const newVehicle = {
+            vehicle_id: document.getElementById("log_vehicleId").value,
+            driver_name: document.getElementById("log_driverName").value,
+            license_plate: document.getElementById("log_licensePlate").value,
             status: document.getElementById("log_status").value,
+            location: document.getElementById("log_location").value,
+            booking_status: document.getElementById("log_booking").value,
+            current_mileage: 0,
+            fuel_efficiency: 90,
+            utilization_rate: 80
         };
 
-        const saved = await this.saveLogisticsToServer(newLogistics);
-        if (saved?.newLogistics) {
-            AppState.data.logistics.unshift(saved.newLogistics);
-        } else {
-            // fallback: push locally
-            AppState.data.logistics.unshift(newLogistics);
-        }
-
-        this.populateTable(AppState.data.logistics);
+        await this.postVehicle(newVehicle);
+        await this.fetchVehicles();
         this.closeCreateModal();
-        updateDashboardCounts();
-        showNotification("Logistics entry created successfully!", "success");
+        showNotification("Vehicle created successfully!", "success");
     },
+
+    // 👁 View full vehicle details
+    viewVehicle(vehicleId) {
+        const vehicle = AppState.data.vehicles.find(v => v.vehicle_id == vehicleId);
+        if (!vehicle) return;
+
+        const details = Object.entries(vehicle)
+            .map(([key, value]) => `
+                <div class="detail-row">
+                    <strong>${key.replace(/_/g, " ")}:</strong> ${value ?? ""}
+                </div>
+            `)
+            .join("");
+
+        const modalBody = document.getElementById("viewVehicleDetails");
+        if (modalBody) modalBody.innerHTML = details;
+
+        const deleteBtn = document.getElementById("deleteVehicleBtn");
+        deleteBtn.onclick = () => this.deleteVehicle(vehicleId);
+
+        document.getElementById("viewVehicleModal").style.display = "block";
+    },
+
+    closeViewModal() {
+        document.getElementById("viewVehicleModal").style.display = "none";
+        document.getElementById("viewVehicleDetails").innerHTML = "";
+    },
+
+    async deleteVehicle(vehicleId) {
+        if (!confirm("Are you sure you want to delete this vehicle?")) return;
+
+        try {
+            const res = await fetch(`http://localhost:8000/delete_vehicle/${vehicleId}`, {
+                method: "DELETE"
+            });
+            if (!res.ok) throw new Error("Failed to delete vehicle");
+
+            showNotification("Vehicle deleted successfully!", "success");
+            this.closeViewModal();
+            await this.fetchVehicles();
+        } catch (err) {
+            console.error("Error deleting vehicle:", err);
+            showNotification("Failed to delete vehicle", "error");
+        }
+    }
 };
+
+// ✅ Expose globally
+window.loadLogisticsPage = loadLogisticsPage;
+window.LogisticsModule = LogisticsModule;
