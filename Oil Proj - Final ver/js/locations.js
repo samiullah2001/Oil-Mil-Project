@@ -8,9 +8,6 @@ function loadLocationsPage(container) {
 
     const content = `
         <div class="controls">
-            <button class="create-btn" onclick="Locations.openCreateModal()">
-                ➕ Create New
-            </button>
             <button class="upload-btn" onclick="document.getElementById('locationsFileInput').click()">
                 📄 Upload Excel
             </button>

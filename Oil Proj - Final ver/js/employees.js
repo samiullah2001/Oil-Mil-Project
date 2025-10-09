@@ -10,9 +10,6 @@ function loadEmployeesPage(container) {
 
     const content = `
         <div class="controls">
-            <button class="create-btn" onclick="Employees.openCreateModal()">
-                ➕ Create New
-            </button>
             <button class="upload-btn" onclick="document.getElementById('employeesFileInput').click()">
                 📄 Upload Excel
             </button>

@@ -8,9 +8,6 @@ function loadLogisticsPage(container) {
 
     const content = `
         <div class="controls">
-            <button class="create-btn" onclick="LogisticsModule.openCreateModal()">
-                ➕ Create New
-            </button>
             <button class="upload-btn" onclick="document.getElementById('logisticsFileInput').click()">
                 📄 Upload Excel
             </button>
