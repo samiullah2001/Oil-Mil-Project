@@ -192,6 +192,44 @@ const Employees = {
         this.closeCreateModal();
         showNotification("Employee created successfully!", "success");
     },
+    // 📂 Handle Excel Upload
+handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet);
+
+            for (const row of rows) {
+                const newEmployee = {
+                    employee_id: row["employee_id"] || "",
+                    employee_name: row["employee_name"] || "",
+                    department: row["department"] || "",
+                    job_role: row["job_role"] || "",
+                    employee_status: row["employee_status"] || "",
+                    job_completion_rate: row["job_completion_rate"] || 0,
+                    safety_compliance: row["safety_compliance"] || 0,
+                    overall_score: row["overall_score"] || 0
+                };
+
+                // Save each employee to backend
+                await this.postEmployee(newEmployee);
+            }
+
+            await this.fetchEmployees();
+            showNotification("Excel data imported successfully!", "success");
+        } catch (err) {
+            console.error("Error importing employees:", err);
+            showNotification("Failed to import employees", "error");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+},
 
     // 🔍 View full employee details
     viewEmployee(employeeId) {
