@@ -36,47 +36,6 @@ function loadEmployeesPage(container) {
             </table>
         </div>
 
-        <!-- Create Employee Modal -->
-        <div id="createEmployeeModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">Create New Employee</h2>
-                    <button class="close" onclick="Employees.closeCreateModal()">×</button>
-                </div>
-                <form id="createEmployeeForm">
-                    <div class="form-group">
-                        <label class="form-label">Employee ID</label>
-                        <input type="text" class="form-input" id="emp_id" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-input" id="emp_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Department</label>
-                        <input type="text" class="form-input" id="emp_department" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Job Role</label>
-                        <input type="text" class="form-input" id="emp_jobRole" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select id="emp_status" class="form-select" required>
-                            <option value="">Select Status</option>
-                            <option value="On Rig">On Rig</option>
-                            <option value="Standby">Standby</option>
-                            <option value="Rotational Leave">Rotational Leave</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" onclick="Employees.closeCreateModal()">Cancel</button>
-                        <button type="submit" class="btn-primary">Create Employee</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         <!-- View Employee Modal -->
         <div id="viewEmployeeModal" class="modal">
             <div class="modal-content large">
@@ -101,8 +60,6 @@ function loadEmployeesPage(container) {
 const Employees = {
     async init() {
         await this.fetchEmployees();
-        const form = document.getElementById("createEmployeeForm");
-        if (form) form.addEventListener("submit", this.handleSubmit.bind(this));
     },
 
     async fetchEmployees() {
@@ -151,87 +108,36 @@ const Employees = {
         this.populateTable(filtered);
     },
 
-    openCreateModal() {
-        document.getElementById("createEmployeeModal").style.display = "block";
-    },
+    // 📂 Handle Excel Upload (direct FormData → backend)
+    async handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-    closeCreateModal() {
-        document.getElementById("createEmployeeModal").style.display = "none";
-        document.getElementById("createEmployeeForm").reset();
-    },
+        const formData = new FormData();
+        formData.append("file", file);
 
-    async postEmployee(employee) {
         try {
-            const res = await fetch("http://localhost:8000/post_employee", {
+            const response = await fetch("http://localhost:8000/post_all_employees", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(employee)
+                body: formData,
             });
-            return await res.json();
-        } catch (err) {
-            console.error("Error posting employee:", err);
-        }
-    },
 
-    async handleSubmit(e) {
-        e.preventDefault();
+            const result = await response.json();
+            console.log("Upload result:", result);
 
-        const newEmployee = {
-            employee_id: document.getElementById("emp_id").value,
-            employee_name: document.getElementById("emp_name").value,
-            department: document.getElementById("emp_department").value,
-            job_role: document.getElementById("emp_jobRole").value,
-            employee_status: document.getElementById("emp_status").value,
-            job_completion_rate: 80,
-            safety_compliance: 90,
-            overall_score: 85
-        };
-
-        await this.postEmployee(newEmployee);
-        await this.fetchEmployees();
-        this.closeCreateModal();
-        showNotification("Employee created successfully!", "success");
-    },
-    // 📂 Handle Excel Upload
-handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(sheet);
-
-            for (const row of rows) {
-                const newEmployee = {
-                    employee_id: row["employee_id"] || "",
-                    employee_name: row["employee_name"] || "",
-                    department: row["department"] || "",
-                    job_role: row["job_role"] || "",
-                    employee_status: row["employee_status"] || "",
-                    job_completion_rate: row["job_completion_rate"] || 0,
-                    safety_compliance: row["safety_compliance"] || 0,
-                    overall_score: row["overall_score"] || 0
-                };
-
-                // Save each employee to backend
-                await this.postEmployee(newEmployee);
+            if (response.ok) {
+                showNotification("Employees data uploaded successfully!", "success");
+                await this.fetchEmployees(); // refresh the table
+            } else {
+                showNotification(`Upload failed: ${result.message || "Unknown error"}`, "error");
             }
-
-            await this.fetchEmployees();
-            showNotification("Excel data imported successfully!", "success");
         } catch (err) {
-            console.error("Error importing employees:", err);
-            showNotification("Failed to import employees", "error");
+            console.error("Error uploading employees:", err);
+            showNotification("Error uploading Excel file", "error");
         }
-    };
-    reader.readAsArrayBuffer(file);
-},
+    },
 
-    // 🔍 View full employee details
+    // 🔍 View employee details
     viewEmployee(employeeId) {
         const emp = AppState.data.employees.find(e => e.employee_id === employeeId);
         if (!emp) return;
@@ -247,7 +153,6 @@ handleFileUpload(event) {
         const modalBody = document.getElementById("viewEmployeeDetails");
         if (modalBody) modalBody.innerHTML = details;
 
-        // Set delete button behavior
         const deleteBtn = document.getElementById("deleteEmployeeBtn");
         deleteBtn.onclick = () => this.deleteEmployee(employeeId);
 
@@ -259,13 +164,13 @@ handleFileUpload(event) {
         document.getElementById("viewEmployeeDetails").innerHTML = "";
     },
 
-    // 🗑 Delete employee from backend
+    // 🗑 Delete employee
     async deleteEmployee(employeeId) {
         if (!confirm("Are you sure you want to delete this employee?")) return;
 
         try {
             const res = await fetch(`http://localhost:8000/delete_employee/${employeeId}`, {
-                method: "DELETE"
+                method: "DELETE",
             });
 
             if (!res.ok) throw new Error("Failed to delete employee");
