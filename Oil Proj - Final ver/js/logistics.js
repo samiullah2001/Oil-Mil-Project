@@ -34,53 +34,6 @@ function loadLogisticsPage(container) {
             </table>
         </div>
 
-        <!-- Create Vehicle Modal -->
-        <div id="createLogisticsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Create New Vehicle</h2>
-                    <button class="close" onclick="LogisticsModule.closeCreateModal()">×</button>
-                </div>
-                <form id="createLogisticsForm">
-                    <div class="form-group">
-                        <label>Vehicle ID</label>
-                        <input type="text" class="form-input" id="log_vehicleId" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Driver Name</label>
-                        <input type="text" class="form-input" id="log_driverName" required>
-                    </div>
-                    <div class="form-group">
-                        <label>License Plate</label>
-                        <input type="text" class="form-input" id="log_licensePlate" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select class="form-select" id="log_status" required>
-                            <option value="">Select</option>
-                            <option value="Active">Active</option>
-                            <option value="In Maintenance">In Maintenance</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Location</label>
-                        <input type="text" class="form-input" id="log_location" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Booking Status</label>
-                        <select class="form-select" id="log_booking" required>
-                            <option value="Available">Available</option>
-                            <option value="Booked">Booked</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" onclick="LogisticsModule.closeCreateModal()">Cancel</button>
-                        <button type="submit" class="btn-primary">Create</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         <!-- View Vehicle Modal -->
         <div id="viewVehicleModal" class="modal">
             <div class="modal-content large">
@@ -105,10 +58,9 @@ function loadLogisticsPage(container) {
 const LogisticsModule = {
     async init() {
         await this.fetchVehicles();
-        const form = document.getElementById("createLogisticsForm");
-        if (form) form.addEventListener("submit", this.handleSubmit.bind(this));
     },
 
+    // 🔄 Fetch vehicles from backend
     async fetchVehicles() {
         try {
             const res = await fetch("http://localhost:8000/get_all_vehicles");
@@ -124,6 +76,7 @@ const LogisticsModule = {
         }
     },
 
+    // 🧾 Populate vehicle table
     populateTable(data = AppState.data.vehicles) {
         const tbody = document.getElementById("logisticsTableBody");
         if (!tbody) return;
@@ -146,6 +99,7 @@ const LogisticsModule = {
         });
     },
 
+    // 🔍 Search vehicles
     search(term) {
         const filtered = AppState.data.vehicles.filter(v =>
             Object.values(v).some(value =>
@@ -155,50 +109,32 @@ const LogisticsModule = {
         this.populateTable(filtered);
     },
 
-    openCreateModal() {
-        document.getElementById("createLogisticsModal").style.display = "block";
-    },
+    // 📂 Upload Excel directly to backend
+    async handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-    closeCreateModal() {
-        document.getElementById("createLogisticsModal").style.display = "none";
-        document.getElementById("createLogisticsForm").reset();
-    },
+        const formData = new FormData();
+        formData.append("file", file);
 
-    async postVehicle(vehicle) {
         try {
-            const res = await fetch("http://localhost:8000/post_vehicle", {
+            const res = await fetch("http://localhost:8000/post_all_vehicles", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(vehicle)
+                body: formData
             });
-            return await res.json();
-        } catch (err) {
-            console.error("Error posting vehicle:", err);
+
+            const result = await res.json();
+            console.log("Upload result:", result);
+
+            showNotification(result.message || "Vehicles uploaded successfully!", "success");
+            await this.fetchVehicles(); // Refresh data
+        } catch (error) {
+            console.error("Error uploading vehicles:", error);
+            showNotification("Failed to upload vehicles file", "error");
         }
     },
 
-    async handleSubmit(e) {
-        e.preventDefault();
-
-        const newVehicle = {
-            vehicle_id: document.getElementById("log_vehicleId").value,
-            driver_name: document.getElementById("log_driverName").value,
-            license_plate: document.getElementById("log_licensePlate").value,
-            status: document.getElementById("log_status").value,
-            location: document.getElementById("log_location").value,
-            booking_status: document.getElementById("log_booking").value,
-            current_mileage: 0,
-            fuel_efficiency: 90,
-            utilization_rate: 80
-        };
-
-        await this.postVehicle(newVehicle);
-        await this.fetchVehicles();
-        this.closeCreateModal();
-        showNotification("Vehicle created successfully!", "success");
-    },
-
-    // 👁 View full vehicle details
+    // 👁 View vehicle details
     viewVehicle(vehicleId) {
         const vehicle = AppState.data.vehicles.find(v => v.vehicle_id == vehicleId);
         if (!vehicle) return;
@@ -225,6 +161,7 @@ const LogisticsModule = {
         document.getElementById("viewVehicleDetails").innerHTML = "";
     },
 
+    // 🗑 Delete vehicle
     async deleteVehicle(vehicleId) {
         if (!confirm("Are you sure you want to delete this vehicle?")) return;
 

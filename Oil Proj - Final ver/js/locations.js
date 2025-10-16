@@ -36,50 +36,6 @@ function loadLocationsPage(container) {
             </table>
         </div>
 
-        <!-- Create Location Modal -->
-        <div id="createLocationModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Create New Location</h2>
-                    <button class="close" onclick="Locations.closeCreateModal()">×</button>
-                </div>
-                <form id="createLocationForm">
-                    <div class="form-group">
-                        <label>Description</label>
-                        <input type="text" class="form-input" id="loc_description" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Coordinates</label>
-                        <input type="text" class="form-input" id="loc_coordinates" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Well Number</label>
-                        <input type="text" class="form-input" id="loc_well_number">
-                    </div>
-                    <div class="form-group">
-                        <label>Next Location</label>
-                        <input type="text" class="form-input" id="loc_next_location">
-                    </div>
-                    <div class="form-group">
-                        <label>Group</label>
-                        <input type="text" class="form-input" id="loc_group_type">
-                    </div>
-                    <div class="form-group">
-                        <label>Driving Route</label>
-                        <input type="text" class="form-input" id="loc_driving_route">
-                    </div>
-                    <div class="form-group">
-                        <label>Network</label>
-                        <input type="text" class="form-input" id="loc_network">
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" onclick="Locations.closeCreateModal()">Cancel</button>
-                        <button type="submit" class="btn-primary">Create</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         <!-- View Location Modal -->
         <div id="viewLocationModal" class="modal">
             <div class="modal-content large">
@@ -104,10 +60,9 @@ function loadLocationsPage(container) {
 const Locations = {
     async init() {
         await this.fetchLocations();
-        const form = document.getElementById("createLocationForm");
-        if (form) form.addEventListener("submit", this.handleSubmit.bind(this));
     },
 
+    // 🧭 Fetch all locations from backend
     async fetchLocations() {
         try {
             const res = await fetch("http://localhost:8000/get_all_locations");
@@ -123,6 +78,7 @@ const Locations = {
         }
     },
 
+    // 📋 Populate frontend table
     populateTable(data = AppState.data.locations) {
         const tbody = document.getElementById("locationsTableBody");
         if (!tbody) return;
@@ -147,6 +103,7 @@ const Locations = {
         });
     },
 
+    // 🔍 Search
     search(term) {
         const filtered = AppState.data.locations.filter(loc =>
             Object.values(loc).some(value =>
@@ -156,48 +113,32 @@ const Locations = {
         this.populateTable(filtered);
     },
 
-    openCreateModal() {
-        document.getElementById("createLocationModal").style.display = "block";
-    },
+    // 📂 Upload Excel directly to backend
+    async handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-    closeCreateModal() {
-        document.getElementById("createLocationModal").style.display = "none";
-        document.getElementById("createLocationForm").reset();
-    },
+        const formData = new FormData();
+        formData.append("file", file);
 
-    async postLocation(location) {
         try {
-            const res = await fetch("http://localhost:8000/post_location", {
+            const res = await fetch("http://localhost:8000/post_all_locations", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(location)
+                body: formData
             });
-            return await res.json();
-        } catch (err) {
-            console.error("Error posting location:", err);
+
+            const result = await res.json();
+            console.log("Upload result:", result);
+
+            showNotification(result.message || "Locations uploaded successfully!", "success");
+            await this.fetchLocations(); // Refresh table
+        } catch (error) {
+            console.error("Error uploading locations:", error);
+            showNotification("Failed to upload locations file", "error");
         }
     },
 
-    async handleSubmit(e) {
-        e.preventDefault();
-
-        const newLocation = {
-            location_description: document.getElementById("loc_description").value,
-            coordinates: document.getElementById("loc_coordinates").value,
-            well_number: document.getElementById("loc_well_number").value,
-            next_location: document.getElementById("loc_next_location").value,
-            group_type: document.getElementById("loc_group_type").value,
-            driving_route: document.getElementById("loc_driving_route").value,
-            network: document.getElementById("loc_network").value,
-        };
-
-        await this.postLocation(newLocation);
-        await this.fetchLocations();
-        this.closeCreateModal();
-        showNotification("Location created successfully!", "success");
-    },
-
-    // 🔍 View full details
+    // 👁 View full details
     viewLocation(locationId) {
         const loc = AppState.data.locations.find(l => l.location_id == locationId);
         if (!loc) return;
