@@ -1,4 +1,4 @@
-// Service Orders Page
+// ====================== Service Orders Page ======================
 function loadServiceOrdersPage(container) {
     if (!container) container = document.getElementById("main-content");
     if (!container) {
@@ -107,7 +107,7 @@ function loadServiceOrdersPage(container) {
     ServiceOrders.init();
 }
 
-// Service Orders Module
+// ====================== Service Orders Module ======================
 const ServiceOrders = {
     async init() {
         await this.fetchServiceOrders();
@@ -115,6 +115,7 @@ const ServiceOrders = {
         if (form) form.addEventListener("submit", this.handleSubmit.bind(this));
     },
 
+    // 📦 Fetch combined data
     async fetchServiceOrders() {
         try {
             const [detailsRes, ordersRes] = await Promise.all([
@@ -126,10 +127,10 @@ const ServiceOrders = {
             const details = await detailsRes.json();
             const orders = await ordersRes.json();
 
-            // Merge details and orders by service_order_id
-            AppState.data.serviceOrders = details.data.map(d => ({
+            // Merge details and orders
+            AppState.data.serviceOrders = (details.data || []).map(d => ({
                 ...d,
-                items: orders.data.filter(o => o.service_order_id === d.service_order_id)
+                items: (orders.data || []).filter(o => o.service_order_id === d.service_order_id)
             }));
 
             this.populateTable(AppState.data.serviceOrders);
@@ -140,6 +141,7 @@ const ServiceOrders = {
         }
     },
 
+    // 🧾 Table view
     populateTable(data = AppState.data.serviceOrders) {
         const tbody = document.getElementById("serviceOrdersTableBody");
         if (!tbody) return;
@@ -156,40 +158,68 @@ const ServiceOrders = {
                 <td>${order.priority}</td>
                 <td>
                     <button class="btn-view" onclick="ServiceOrders.viewServiceOrder('${order.service_order_id}')">👁 View</button>
+                    <button class="btn-danger" onclick="ServiceOrders.deleteServiceOrder('${order.service_order_id}')">🗑 Delete</button>
                 </td>
             `;
             tbody.appendChild(row);
         });
     },
 
-    // View Details
+    // 👁 View modal
     viewServiceOrder(serviceOrderId) {
         const order = AppState.data.serviceOrders.find(o => o.service_order_id === serviceOrderId);
         if (!order) return;
 
-        const detailsHTML = `
-            <h3>Order Information</h3>
-            ${Object.entries(order)
-                .filter(([k]) => k !== "items")
-                .map(([key, value]) => `
-                    <div class="detail-row">
-                        <strong>${key.replace(/_/g, " ")}:</strong> ${value ?? ""}
-                    </div>
-                `).join("")}
-
-            <h3>Items</h3>
-            ${(order.items || [])
-                .map(item => `
-                    <div class="detail-row sub-item">
-                        ${Object.entries(item)
-                            .map(([k, v]) => `<strong>${k.replace(/_/g, " ")}:</strong> ${v}<br>`)
-                            .join("")}
-                    </div>
-                `).join("")}
+        const headerDetails = `
+            <div class="details-section">
+                <h3>📋 Order Details</h3>
+                <div class="detail-grid">
+                    <div><strong>Service Order ID:</strong> ${order.service_order_id}</div>
+                    <div><strong>Vendor Name:</strong> ${order.vendor_name}</div>
+                    <div><strong>Rig Code:</strong> ${order.rig_code}</div>
+                    <div><strong>Well Name:</strong> ${order.well_name}</div>
+                    <div><strong>Required Date:</strong> ${order.required_date}</div>
+                    <div><strong>Priority:</strong> ${order.priority}</div>
+                    <div><strong>Requestor:</strong> ${order.requestor}</div>
+                    <div><strong>Submission Date:</strong> ${order.submission_date}</div>
+                    <div><strong>Year:</strong> ${order.year}</div>
+                    <div><strong>Comments:</strong> ${order.comments ?? "-"}</div>
+                </div>
+            </div>
         `;
 
+        const itemsTable = order.items?.length
+            ? `
+            <div class="details-section">
+                <h3>📦 Ordered Items</h3>
+                <table class="modal-subtable">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Quantity</th>
+                            <th>UOM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${order.items
+                            .map(
+                                item => `
+                            <tr>
+                                <td>${item.service_description}</td>
+                                <td>${item.service_category}</td>
+                                <td>${item.quantity}</td>
+                                <td>${item.uom}</td>
+                            </tr>`
+                            )
+                            .join("")}
+                    </tbody>
+                </table>
+            </div>`
+            : `<p>No service items found for this order.</p>`;
+
         const modalBody = document.getElementById("viewServiceOrderDetails");
-        modalBody.innerHTML = detailsHTML;
+        if (modalBody) modalBody.innerHTML = headerDetails + itemsTable;
 
         const deleteBtn = document.getElementById("deleteServiceOrderBtn");
         deleteBtn.onclick = () => this.deleteServiceOrder(serviceOrderId);
@@ -202,12 +232,11 @@ const ServiceOrders = {
         document.getElementById("viewServiceOrderDetails").innerHTML = "";
     },
 
+    // 🗑 Delete
     async deleteServiceOrder(serviceOrderId) {
         if (!confirm("Are you sure you want to delete this service order?")) return;
         try {
-            const res = await fetch(`http://localhost:8000/delete_service_order/${serviceOrderId}`, {
-                method: "DELETE"
-            });
+            const res = await fetch(`http://localhost:8000/delete_service_order/${serviceOrderId}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed to delete");
             showNotification("Service order deleted successfully!", "success");
             this.closeViewModal();
@@ -218,31 +247,48 @@ const ServiceOrders = {
         }
     },
 
-    // Excel Upload (No XLSX parsing — just send files)
+    // 📂 Upload 2 Excel files (details first, then orders)
     async handleFileUpload(event) {
         const files = event.target.files;
         if (!files || files.length !== 2) {
-            alert("Please select exactly 2 files (Service Order Details + Service Orders)");
+            alert("Please select exactly 2 files: (1) Service Order Details, (2) Service Orders");
             return;
         }
 
-        const formData = new FormData();
-        for (let f of files) formData.append("files", f);
-
         try {
-            const res = await fetch("http://localhost:8000/post_all_service_orders", {
+            const detailsFile = [...files].find(f => f.name.toLowerCase().includes("detail"));
+            const ordersFile = [...files].find(f => !f.name.toLowerCase().includes("detail"));
+
+            if (!detailsFile || !ordersFile) {
+                alert("Please ensure filenames contain 'detail' for details file.");
+                return;
+            }
+
+            const detailsForm = new FormData();
+            detailsForm.append("file", detailsFile);
+            const detailsRes = await fetch("http://localhost:8000/post_all_service_order_details", {
                 method: "POST",
-                body: formData
+                body: detailsForm
             });
-            if (!res.ok) throw new Error("Upload failed");
-            showNotification("Service orders uploaded successfully!", "success");
+            if (!detailsRes.ok) throw new Error("Failed to upload Service Order Details");
+
+            const ordersForm = new FormData();
+            ordersForm.append("file", ordersFile);
+            const ordersRes = await fetch("http://localhost:8000/post_all_service_orders", {
+                method: "POST",
+                body: ordersForm
+            });
+            if (!ordersRes.ok) throw new Error("Failed to upload Service Orders");
+
+            showNotification("Both Service Order files uploaded successfully!", "success");
             await this.fetchServiceOrders();
         } catch (err) {
-            console.error("Error uploading files:", err);
-            showNotification("Failed to upload files", "error");
+            console.error("Error uploading Service Order files:", err);
+            showNotification("Failed to upload Service Order files", "error");
         }
     },
 
+    // 📝 Form-based Create
     async handleSubmit(e) {
         e.preventDefault();
 
@@ -294,6 +340,16 @@ const ServiceOrders = {
     closeCreateModal() {
         document.getElementById("createServiceOrderModal").style.display = "none";
         document.getElementById("createServiceOrderForm").reset();
+    },
+
+    // 🔍 Search
+    search(term) {
+        const filtered = AppState.data.serviceOrders.filter(order =>
+            Object.values(order).some(v =>
+                v && v.toString().toLowerCase().includes(term.toLowerCase())
+            )
+        );
+        this.populateTable(filtered);
     }
 };
 
