@@ -232,13 +232,20 @@ const ServiceOrders = {
         document.getElementById("viewServiceOrderDetails").innerHTML = "";
     },
 
-    // 🗑 Delete
+// 🗑 Delete service order
     async deleteServiceOrder(serviceOrderId) {
         if (!confirm("Are you sure you want to delete this service order?")) return;
+
         try {
-            const res = await fetch(`http://localhost:8000/delete_service_order/${serviceOrderId}`, { method: "DELETE" });
-            if (!res.ok) throw new Error("Failed to delete");
-            showNotification("Service order deleted successfully!", "success");
+            const res = await fetch(`http://localhost:8000/delete_service_order?service_order_id=${encodeURIComponent(serviceOrderId)}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) throw new Error("Failed to delete service order");
+
+            const data = await res.json();
+            showNotification(data.message || "Service order deleted successfully!", "success");
+
             this.closeViewModal();
             await this.fetchServiceOrders();
         } catch (err) {

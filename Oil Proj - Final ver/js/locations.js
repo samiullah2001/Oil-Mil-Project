@@ -167,23 +167,25 @@ const Locations = {
 
     // 🗑 Delete record
     async deleteLocation(locationId) {
-        if (!confirm("Are you sure you want to delete this location?")) return;
+    if (!confirm("Are you sure you want to delete this location?")) return;
 
-        try {
-            const res = await fetch(`http://localhost:8000/delete_location/${locationId}`, {
-                method: "DELETE"
-            });
+    try {
+        const res = await fetch(`http://localhost:8000/delete_location?location_id=${locationId}`, {
+            method: "DELETE"
+        });
 
-            if (!res.ok) throw new Error("Failed to delete location");
+        if (!res.ok) throw new Error("Failed to delete location");
 
-            showNotification("Location deleted successfully!", "success");
-            this.closeViewModal();
-            await this.fetchLocations();
-        } catch (err) {
-            console.error("Error deleting location:", err);
-            showNotification("Failed to delete location", "error");
-        }
+        const data = await res.json();
+        showNotification(data.message || "Location deleted successfully!", "success");
+
+        this.closeViewModal();
+        await this.fetchLocations();
+    } catch (err) {
+        console.error("Error deleting location:", err);
+        showNotification("Failed to delete location", "error");
     }
+}
 };
 
 // ✅ Expose globally

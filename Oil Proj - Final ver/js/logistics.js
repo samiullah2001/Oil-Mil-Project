@@ -162,16 +162,20 @@ const LogisticsModule = {
     },
 
     // 🗑 Delete vehicle
+    // 🗑 Delete vehicle
     async deleteVehicle(vehicleId) {
         if (!confirm("Are you sure you want to delete this vehicle?")) return;
 
         try {
-            const res = await fetch(`http://localhost:8000/delete_vehicle/${vehicleId}`, {
-                method: "DELETE"
+            const res = await fetch(`http://localhost:8000/delete_vehicle?vehicle_id=${encodeURIComponent(vehicleId)}`, {
+                method: "DELETE",
             });
+
             if (!res.ok) throw new Error("Failed to delete vehicle");
 
-            showNotification("Vehicle deleted successfully!", "success");
+            const data = await res.json();
+            showNotification(data.message || "Vehicle deleted successfully!", "success");
+
             this.closeViewModal();
             await this.fetchVehicles();
         } catch (err) {

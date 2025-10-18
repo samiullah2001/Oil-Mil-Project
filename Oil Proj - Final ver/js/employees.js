@@ -164,18 +164,22 @@ const Employees = {
         document.getElementById("viewEmployeeDetails").innerHTML = "";
     },
 
-    // 🗑 Delete employee
+    // 🗑 Delete employee (page-specific version)
     async deleteEmployee(employeeId) {
         if (!confirm("Are you sure you want to delete this employee?")) return;
 
         try {
-            const res = await fetch(`http://localhost:8000/delete_employee/${employeeId}`, {
+            // Send DELETE request with query param instead of path param
+            const res = await fetch(`http://localhost:8000/delete_employee?employee_id=${encodeURIComponent(employeeId)}`, {
                 method: "DELETE",
             });
 
             if (!res.ok) throw new Error("Failed to delete employee");
 
-            showNotification("Employee deleted successfully!", "success");
+            const data = await res.json();
+            showNotification(data.message || "Employee deleted successfully!", "success");
+
+            // Close modal and refresh list
             this.closeViewModal();
             await this.fetchEmployees();
         } catch (err) {
@@ -183,6 +187,7 @@ const Employees = {
             showNotification("Failed to delete employee", "error");
         }
     }
+
 };
 
 // ✅ Expose globally
